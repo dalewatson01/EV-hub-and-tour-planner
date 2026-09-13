@@ -1,0 +1,2244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Road Trip Planner — EV Australia Hub</title>
+<style>
+  :root{
+    --sand:#EFE9DA; --sand-dim:#E4DCC7; --ink:#20291F; --ink-soft:#4B5A47;
+    --gum:#2F5D45; --gum-dark:#234636; --amber:#E0A93B; --amber-dark:#B9862A;
+    --line:#D8CFB6; --card:#FBFAF5; --radius:18px; --header-h:56px;
+  }
+  *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+  body{ background:var(--sand); color:var(--ink); font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif; min-height:100vh; }
+  h1,h2,h3{ font-family:Georgia,"Times New Roman",serif; font-weight:700; letter-spacing:-0.01em; margin:0; }
+  a{color:inherit;}
+
+  .topbar{ position:sticky; top:0; z-index:20; height:var(--header-h); background:var(--sand);
+    border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; padding:0 14px; }
+  .topbar .home-btn{ display:flex; align-items:center; gap:6px; text-decoration:none; background:none; border:none;
+    font-size:14px; font-weight:600; color:var(--gum-dark); cursor:pointer; padding:8px 4px; }
+  .topbar .home-btn .dot{ width:8px;height:8px;border-radius:50%;background:var(--amber); }
+  .topbar .crumb{ font-size:13px; color:var(--ink-soft); flex:1; text-align:right; }
+
+  .app{ max-width:460px; margin:0 auto; padding:20px 14px 60px; }
+
+  /* Responsive: widen and breathe more on tablet/desktop, don't stay phone-narrow */
+  @media (min-width: 640px){
+    .app{ max-width:620px; padding:28px 24px 70px; }
+    .home-title{ font-size:27px; }
+    .card, .summary-card{ padding:30px 28px; }
+    #tripMap svg{ max-height:340px; }
+  }
+  @media (min-width: 1024px){
+    .topbar{ position:fixed; top:0; left:0; right:0; }
+    .app{ max-width:760px; padding:100px 24px 80px; }
+    .home-title{ font-size:30px; }
+    .q-title{ font-size:17px; }
+    .options{ flex-direction:row; }
+    .options .opt{ flex:1; }
+  }
+
+  .home-title{ font-size:23px; line-height:1.3; margin-bottom:4px; }
+  .home-sub{ font-size:14px; color:var(--ink-soft); margin-bottom:20px; }
+
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:24px 20px; }
+  .q-title{ font-size:15.5px; font-weight:700; margin-bottom:8px; }
+  .q-help{ font-size:13px; color:var(--ink-soft); margin-bottom:10px; line-height:1.5; }
+  .field-block{ margin-bottom:22px; }
+  .field-block:last-of-type{ margin-bottom:0; }
+
+  input[type=text], input[type=number]{
+    width:100%; padding:12px 14px; font-size:15px; border:1.5px solid var(--line);
+    border-radius:10px; background:#fff; color:var(--ink);
+  }
+  input[type=text]:focus, input[type=number]:focus{ outline:none; border-color:var(--gum); }
+
+  .options{ display:flex; flex-wrap:wrap; gap:8px; }
+  .opt{ flex:1 1 auto; min-width:100px; text-align:center; background:#fff; border:1.5px solid var(--line);
+    border-radius:10px; padding:11px 10px; font-size:13.5px; color:var(--ink); cursor:pointer; }
+  .opt.selected{ border-color:var(--gum); background:#EAF2ED; font-weight:700; }
+
+  .shortlist-pills{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .pill{ background:#fff; border:1.5px solid var(--line); border-radius:20px; padding:8px 14px; font-size:13px; cursor:pointer; }
+  .pill.selected{ border-color:var(--gum); background:#EAF2ED; font-weight:700; }
+
+  .btn{ border:none; border-radius:10px; padding:13px 22px; font-size:15px; font-weight:600; cursor:pointer; width:100%; }
+  .btn-primary{ background:var(--gum); color:#fff; }
+  .btn-primary:hover{ background:var(--gum-dark); }
+  .btn-primary:disabled{ background:#B9C2B4; cursor:not-allowed; }
+  .restart{ display:block; width:100%; text-align:center; margin-top:10px; background:transparent;
+    border:1.5px solid var(--line); border-radius:12px; padding:12px; font-size:14px; color:var(--ink-soft); cursor:pointer; }
+
+  .error-box{ background:#FBEAEA; border:1.5px solid #D98C8C; border-radius:12px; padding:12px 14px; font-size:13.5px; color:#7A2E2E; margin-bottom:16px; }
+
+  /* results */
+  .summary-card{ background:var(--card); border:1.5px solid var(--amber); border-radius:var(--radius); padding:20px; margin-bottom:18px; }
+  .summary-title{ font-size:19px; font-family:Georgia,serif; font-weight:700; margin-bottom:12px; }
+  .summary-grid{ display:flex; flex-wrap:wrap; gap:14px; }
+  .summary-stat{ font-size:13px; min-width:90px; }
+  .summary-stat b{ display:block; font-size:17px; }
+
+  .day-label{ font-size:13px; font-weight:700; color:var(--gum-dark); margin:20px 0 8px; text-transform:uppercase; letter-spacing:.03em; }
+  .day-label:first-of-type{ margin-top:0; }
+  .leg-card{ background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:16px; margin-bottom:10px; }
+  .leg-route{ font-size:15px; font-weight:700; margin-bottom:4px; }
+  .leg-dist{ font-size:12.5px; color:var(--ink-soft); margin-bottom:10px; }
+  .leg-soc{ display:flex; gap:16px; font-size:13px; margin-bottom:8px; }
+  .leg-soc b{ display:block; font-size:15px; }
+  .leg-charge-note{ font-size:13px; background:#EAF2ED; border-radius:8px; padding:8px 10px; color:var(--gum-dark); }
+  .leg-overnight-note{ font-size:13px; background:#F1E3C6; border-radius:8px; padding:8px 10px; color:var(--amber-dark); }
+
+  .footnote{ font-size:12px; color:var(--ink-soft); text-align:center; margin-top:18px; line-height:1.6; }
+
+  /* new: gear icon, toggles, inline edit forms, warnings */
+  .gear-btn{ background:none; border:none; font-size:18px; cursor:pointer; padding:6px; color:var(--ink-soft); }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; margin:10px 0; }
+  .toggle-row .toggle-label{ font-size:13.5px; }
+  .switch{ position:relative; width:42px; height:24px; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider{ position:absolute; cursor:pointer; inset:0; background:var(--line); border-radius:24px; transition:.15s; }
+  .slider:before{ content:""; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .switch input:checked + .slider{ background:var(--gum); }
+  .switch input:checked + .slider:before{ transform:translateX(18px); }
+
+  .warning-banner{ background:#FBEAEA; border:1.5px solid #D98C8C; border-radius:10px; padding:8px 10px; font-size:12.5px; color:#7A2E2E; margin-bottom:8px; }
+  .add-stop-row{ display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 16px; }
+  .add-stop-row button{ flex:1 1 auto; font-size:12px; padding:8px 10px; border-radius:8px; border:1.2px dashed var(--line); background:transparent; color:var(--gum-dark); cursor:pointer; }
+  .inline-form{ background:#fff; border:1.5px solid var(--gum); border-radius:12px; padding:14px; margin:8px 0 16px; }
+  .inline-form label{ display:block; font-size:12.5px; color:var(--ink-soft); margin:8px 0 4px; }
+  .inline-form input, .inline-form select{ width:100%; padding:9px 10px; font-size:14px; border:1.5px solid var(--line); border-radius:8px; }
+  .inline-form .form-actions{ display:flex; gap:8px; margin-top:12px; }
+  .inline-form .form-actions button{ flex:1; padding:10px; border-radius:8px; border:none; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .inline-form .cancel-btn{ background:var(--sand-dim); color:var(--ink-soft); }
+  .inline-form .save-btn{ background:var(--gum); color:#fff; }
+  .remove-link{ background:none; border:none; color:#B04A4A; font-size:12px; cursor:pointer; padding:0; margin-top:8px; }
+  .small-number{ width:70px !important; display:inline-block; }
+  .date-badge{ font-size:12px; color:var(--ink-soft); font-weight:600; }
+  .settings-field{ margin-bottom:16px; }
+  .settings-field label{ display:block; font-size:13.5px; font-weight:600; margin-bottom:6px; }
+  .settings-field .hint{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+
+  #tripMap{ height:300px; border-radius:14px; border:1.5px solid var(--line); margin-bottom:18px; background:var(--card); overflow:hidden; }
+  #tripMap.schematic{ padding:12px; box-sizing:border-box; }
+  .live-badge{ display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; margin-left:6px; }
+  .live-badge.live{ background:#DDEFE2; color:var(--gum-dark); }
+  .live-badge.estimated{ background:var(--sand-dim); color:var(--ink-soft); }
+  .gmaps-link{ font-size:12.5px; color:var(--gum-dark); text-decoration:none; font-weight:600; display:inline-block; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="home-btn" href="ev_hub.html"><span class="dot"></span>← EV Hub</a>
+  <div class="crumb" id="crumbEl">Road Trip Planner</div>
+  <button class="gear-btn" id="savedTripsBtn" title="Saved trips">📂</button>
+  <button class="gear-btn" id="settingsBtn" title="Settings">⚙️</button>
+</div>
+<div style="text-align:center;font-size:10.5px;color:var(--ink-soft);padding:3px 0;background:var(--sand-dim);" id="buildTagBar"></div>
+<div class="app">
+  <div id="root"></div>
+</div>
+
+<script>
+const BUILD_TAG = "Build 2026-09-13d — confirmed offline environment, permanent schematic map";
+const NATIONAL_LOCATIONS = {
+  // Major Capitals & Interstate Endpoints
+  "Melbourne": { lat: -37.8136, lng: 144.9631 },
+  "Melbourne CBD": { lat: -37.8136, lng: 144.9631 },
+  "Sydney": { lat: -33.8688, lng: 151.2093 },
+  "Sydney CBD": { lat: -33.8688, lng: 151.2093 },
+  "Canberra": { lat: -35.2809, lng: 149.1300 },
+  "Brisbane": { lat: -27.4705, lng: 153.0260 },
+  "Adelaide": { lat: -34.9285, lng: 138.6007 },
+  "Tanunda": { lat: -34.5242, lng: 138.9754 },
+  "Nuriootpa": { lat: -34.4694, lng: 138.9958 },
+  "Hobart": { lat: -42.8821, lng: 147.3272 },
+  "Perth": { lat: -31.9505, lng: 115.8605 },
+  "Darwin": { lat: -12.4634, lng: 130.8456 },
+
+  // Interstate regional transit nodes & popular destinations
+  "Albury": { lat: -36.0737, lng: 146.9135 },
+  "Deniliquin": { lat: -35.5312, lng: 144.9657 },
+  "Wodonga": { lat: -36.1241, lng: 146.8818 },
+  "Newcastle": { lat: -32.9283, lng: 151.7817 },
+  "Eden": { lat: -37.0628, lng: 149.9042 },
+  "Wollongong": { lat: -34.4278, lng: 150.8931 },
+  "Byron Bay": { lat: -28.6431, lng: 153.6150 },
+  "Gold Coast": { lat: -28.0167, lng: 153.4000 },
+  "Coffs Harbour": { lat: -30.2963, lng: 153.1141 },
+  "Port Macquarie": { lat: -31.4333, lng: 152.9000 },
+  "Goulburn": { lat: -34.7542, lng: 149.7183 },
+  "Gundagai": { lat: -35.0674, lng: 148.1097 },
+  "Yass": { lat: -34.8203, lng: 148.9136 },
+  "Wagga Wagga": { lat: -35.1189, lng: 147.3688 },
+  "Alice Springs": { lat: -23.6980, lng: 133.8807 },
+  "Katherine": { lat: -14.4646, lng: 132.2635 },
+  "Dunmarra": { lat: -16.6806, lng: 133.4116 },
+  "Tennant Creek": { lat: -19.6455, lng: 134.1912 },
+  "Townsville": { lat: -19.2590, lng: 146.8169 },
+  "Cairns": { lat: -16.9186, lng: 145.7781 },
+  "Launceston": { lat: -41.4419, lng: 147.1448 },
+  "Margaret River": { lat: -33.9550, lng: 115.0750 },
+  "Mildura": { lat: -34.2080, lng: 142.1246 },
+  "Broken Hill": { lat: -31.9539, lng: 141.4648 },
+  "Mount Gambier": { lat: -37.8284, lng: 140.7804 },
+  "Dubbo": { lat: -32.2475, lng: 148.6011 },
+  "Coonabarabran": { lat: -31.2724, lng: 149.2785 },
+  "Warrumbungle National Park": { lat: -31.2842, lng: 148.9840 },
+  "Warumbungle National Park": { lat: -31.2842, lng: 148.9840 },
+  "Warrumbungle NP": { lat: -31.2842, lng: 148.9840 },
+  "Warumbungle NP": { lat: -31.2842, lng: 148.9840 },
+  "Warrumbungle": { lat: -31.2842, lng: 148.9840 },
+  "Warumbungle": { lat: -31.2842, lng: 148.9840 },
+  "Warrumbungles": { lat: -31.2842, lng: 148.9840 },
+  "Warumbungles": { lat: -31.2842, lng: 148.9840 },
+  "Grampians National Park": { lat: -37.2140, lng: 142.3980 },
+  "Kosciuszko National Park": { lat: -36.4559, lng: 148.2635 },
+  "Flinders Ranges National Park": { lat: -31.4239, lng: 138.7056 },
+  "Wilsons Promontory": { lat: -38.9080, lng: 146.3810 },
+  "Wilsons Promontory National Park": { lat: -38.9080, lng: 146.3810 },
+  "Kakadu National Park": { lat: -12.9818, lng: 132.5510 },
+  "Litchfield National Park": { lat: -13.0450, lng: 130.7850 },
+  "Daintree National Park": { lat: -16.1700, lng: 145.4200 },
+  "Blue Mountains National Park": { lat: -33.7126, lng: 150.3119 },
+  "Lake Mungo": { lat: -33.7500, lng: 143.0000 },
+  "Mungo National Park": { lat: -33.7500, lng: 143.0000 },
+  "Port Augusta": { lat: -32.4931, lng: 137.7631 },
+  "Bunbury": { lat: -33.3256, lng: 115.6386 },
+  "Albany": { lat: -35.0269, lng: 117.8837 },
+  "Port Hedland": { lat: -20.3100, lng: 118.5800 },
+  "Broome": { lat: -17.9614, lng: 122.2359 },
+  "Rockhampton": { lat: -23.3792, lng: 150.5100 },
+  "Mackay": { lat: -21.1411, lng: 149.1861 },
+  "Geraldton": { lat: -28.7744, lng: 114.6089 },
+  "Kalgoorlie": { lat: -30.7489, lng: 121.4721 },
+  "Esperance": { lat: -33.8614, lng: 121.8914 },
+  "Carnarvon": { lat: -24.8877, lng: 113.6622 },
+  "Exmouth": { lat: -21.9312, lng: 114.1251 },
+  "Karratha": { lat: -20.7353, lng: 116.8464 },
+  "Gympie": { lat: -26.1892, lng: 152.6650 },
+  "Maryborough": { lat: -25.5376, lng: 152.7019 },
+  "Bundaberg": { lat: -24.8662, lng: 152.3489 },
+  "Gladstone": { lat: -23.8427, lng: 151.2585 },
+  "Bowen": { lat: -20.0137, lng: 148.2475 },
+  "Noosa Heads": { lat: -26.3986, lng: 153.0911 },
+  "Roma": { lat: -26.5731, lng: 148.7877 },
+  "Mount Isa": { lat: -20.7256, lng: 139.4927 },
+  "Dongara": { lat: -29.2514, lng: 114.9317 },
+  "Jurien Bay": { lat: -30.3013, lng: 115.0412 },
+  "Lancelin": { lat: -31.0205, lng: 115.3325 },
+  "Williams": { lat: -32.9611, lng: 116.8812 },
+  "Busselton": { lat: -33.6555, lng: 115.3455 },
+
+  // Victoria regional details & High Country
+  "Beechworth": { lat: -36.3600, lng: 146.6860 },
+  "Bright": { lat: -36.7300, lng: 146.9600 },
+  "Yackandandah": { lat: -36.3056, lng: 146.8444 },
+  "Myrtleford": { lat: -36.5556, lng: 146.7222 },
+  "Mount Beauty": { lat: -36.7417, lng: 147.1681 },
+  "Mount Hotham": { lat: -36.9744, lng: 147.1306 },
+  "Falls Creek": { lat: -36.8639, lng: 147.2806 },
+  "Dinner Plain": { lat: -37.0267, lng: 147.2411 },
+  "Omeo": { lat: -37.1000, lng: 147.6000 },
+  "Mansfield": { lat: -37.0519, lng: 146.0847 },
+  "Mount Buller": { lat: -37.1469, lng: 146.4492 },
+  "Alexandra": { lat: -37.1911, lng: 145.7119 },
+  "Yarra Glen": { lat: -37.6539, lng: 145.3725 },
+  "Warburton": { lat: -37.7542, lng: 145.6981 },
+  "Marysville": { lat: -37.5092, lng: 145.7481 },
+  "Eildon": { lat: -37.2308, lng: 145.9139 },
+  "Castlemaine": { lat: -37.0639, lng: 144.2169 },
+  "Maldon": { lat: -37.0000, lng: 144.0667 },
+  "Kyneton": { lat: -37.2483, lng: 144.4533 },
+  "Woodend": { lat: -37.3592, lng: 144.5267 },
+  "Gisborne": { lat: -37.4892, lng: 144.5908 },
+  "Sunbury": { lat: -37.5792, lng: 144.7267 },
+  "Trentham": { lat: -37.3872, lng: 144.3289 },
+  "Clunes": { lat: -37.2958, lng: 143.7833 },
+  "Creswick": { lat: -37.4264, lng: 143.8942 },
+  "Avoca": { lat: -37.0864, lng: 143.4739 },
+  "St Arnaud": { lat: -36.6139, lng: 143.2558 },
+  "Donald": { lat: -36.3683, lng: 142.9839 },
+  "Charlton": { lat: -36.2736, lng: 143.3489 },
+  "Sea Lake": { lat: -35.5019, lng: 142.8550 },
+  "Ouyen": { lat: -35.0700, lng: 142.3167 },
+  "Robinvale": { lat: -34.5847, lng: 142.7725 },
+  "Cohuna": { lat: -35.8119, lng: 144.2158 },
+  "Numurkah": { lat: -36.0883, lng: 145.4419 },
+  "Yarrawonga": { lat: -36.0125, lng: 146.0028 },
+  "Corowa": { lat: -35.9983, lng: 146.3833 },
+  "Cobram": { lat: -35.9222, lng: 145.6458 },
+  "Rutherglen": { lat: -36.0569, lng: 146.4633 },
+  "Corryong": { lat: -36.1983, lng: 147.9042 },
+  "Tallangatta": { lat: -36.2167, lng: 147.1833 },
+  "Euroa": { lat: -36.7519, lng: 145.5719 },
+  "Nagambie": { lat: -36.7867, lng: 145.1506 },
+  "Kilmore": { lat: -37.2981, lng: 144.9525 },
+  "Broadford": { lat: -37.2039, lng: 145.0633 },
+  "Wallan": { lat: -37.4181, lng: 144.9781 },
+  "Whittlesea": { lat: -37.5139, lng: 145.1167 },
+  "Kinglake": { lat: -37.5217, lng: 145.3589 },
+  "Diamond Creek": { lat: -37.6725, lng: 145.1485 },
+  "Eltham": { lat: -37.7183, lng: 145.1467 },
+  "Greensborough": { lat: -37.6978, lng: 145.1325 },
+  "Ocean Grove": { lat: -38.2678, lng: 144.5222 },
+  "Barwon Heads": { lat: -38.2819, lng: 144.4939 },
+  "Queenscliff": { lat: -38.2667, lng: 144.6667 },
+  "Anglesea": { lat: -38.4117, lng: 144.1869 },
+  "Aireys Inlet": { lat: -38.4614, lng: 144.1019 },
+  "Port Campbell": { lat: -38.6214, lng: 142.9922 },
+  "Timboon": { lat: -38.4792, lng: 142.9808 },
+  "Mortlake": { lat: -38.0778, lng: 142.7931 },
+  "Terang": { lat: -38.2361, lng: 142.9094 },
+  "Camperdown": { lat: -38.2347, lng: 143.1494 },
+  "Colac": { lat: -38.3414, lng: 143.5850 },
+  "Portland": { lat: -38.3483, lng: 141.6033 },
+  "Port Fairy": { lat: -38.3842, lng: 142.2358 },
+  "Casterton": { lat: -37.5908, lng: 141.4039 },
+  "Hamilton": { lat: -37.7436, lng: 142.0219 },
+  "Edenhope": { lat: -37.0308, lng: 141.2958 },
+  "Warracknabeal": { lat: -36.2483, lng: 142.3958 },
+  "Kyabram": { lat: -36.3139, lng: 145.0489 },
+  "Tatura": { lat: -36.4383, lng: 145.2319 },
+  "Mooroopna": { lat: -36.3889, lng: 145.3556 },
+  "Lakes Entrance": { lat: -37.8789, lng: 147.9892 },
+  "Metung": { lat: -37.8864, lng: 147.8542 },
+  "Paynesville": { lat: -37.9150, lng: 147.7183 },
+  "Sale": { lat: -38.1067, lng: 147.0658 },
+  "Maffra": { lat: -37.9625, lng: 146.9781 },
+  "Heyfield": { lat: -37.9819, lng: 146.7867 },
+  "Rosedale": { lat: -38.1528, lng: 146.7889 },
+  "Yarram": { lat: -38.5608, lng: 146.6739 },
+  "Foster": { lat: -38.6539, lng: 146.0633 },
+  "Leongatha": { lat: -38.4739, lng: 145.9458 },
+  "Korumburra": { lat: -38.4328, lng: 145.8208 },
+  "Inverloch": { lat: -38.6328, lng: 145.7275 },
+  "Wonthaggi": { lat: -38.6083, lng: 145.5908 },
+  "Moe": { lat: -38.1758, lng: 146.2625 },
+  "Morwell": { lat: -38.2339, lng: 146.3939 },
+  "Drouin": { lat: -38.1333, lng: 145.8500 },
+  "Pakenham": { lat: -38.0717, lng: 145.4858 },
+  "Berwick": { lat: -38.0333, lng: 145.3483 },
+  "Cranbourne": { lat: -38.0983, lng: 145.2828 },
+  "Mount Martha": { lat: -38.2667, lng: 145.0167 },
+  "Hastings": { lat: -38.3083, lng: 145.1889 },
+
+  // NSW & ACT Regional
+  "Orange": { lat: -33.2833, lng: 149.1000 },
+  "Bathurst": { lat: -33.4194, lng: 149.5778 },
+  "Mudgee": { lat: -32.5939, lng: 149.5878 },
+  "Cowra": { lat: -33.8333, lng: 148.6833 },
+  "Young": { lat: -34.3167, lng: 148.3000 },
+  "Temora": { lat: -34.4464, lng: 147.5342 },
+  "Cootamundra": { lat: -34.6472, lng: 148.0289 },
+  "Tumut": { lat: -35.3019, lng: 148.2239 },
+  "Jindabyne": { lat: -36.4167, lng: 148.6167 },
+  "Thredbo": { lat: -36.5036, lng: 148.3039 },
+  "Perisher": { lat: -36.4039, lng: 148.4119 },
+  "Cooma": { lat: -36.2347, lng: 149.1275 },
+  "Bega": { lat: -36.6719, lng: 149.8419 },
+  "Batemans Bay": { lat: -35.7081, lng: 150.1783 },
+  "Ulladulla": { lat: -35.3583, lng: 150.4722 },
+  "Nowra": { lat: -34.8814, lng: 150.6019 },
+  "Grenfell": { lat: -33.8983, lng: 148.1583 },
+  "Griffith": { lat: -34.2883, lng: 146.0350 },
+  "Tocumwal": { lat: -35.8119, lng: 145.5658 },
+  "Finley": { lat: -35.6483, lng: 145.5781 },
+  "Jerilderie": { lat: -35.3583, lng: 145.7275 },
+  "Moama": { lat: -36.1083, lng: 144.7483 },
+
+  // Coburg and inner suburbs
+  "Coburg": { lat: -37.7437, lng: 144.9631 },
+  "Hurstbridge": { lat: -37.6394, lng: 145.1936 },
+  "Ringwood": { lat: -37.8153, lng: 145.2281 },
+  "Clayton": { lat: -37.9250, lng: 145.1200 },
+  "Geelong": { lat: -38.1499, lng: 144.3617 },
+  "Torquay": { lat: -38.3384, lng: 144.3216 },
+  "Lorne": { lat: -38.5401, lng: 143.9734 },
+  "Apollo Bay": { lat: -38.7562, lng: 143.6673 },
+  "Frankston": { lat: -38.1425, lng: 145.1221 },
+  "Dromana": { lat: -38.3375, lng: 144.9642 },
+  "Portsea": { lat: -38.3219, lng: 144.7142 },
+  "Rosebud": { lat: -38.3582, lng: 144.9038 },
+  "Rye": { lat: -38.3693, lng: 144.8213 },
+  "Sorrento": { lat: -38.3396, lng: 144.7410 },
+  "Lilydale": { lat: -37.7554, lng: 145.3496 },
+  "Healesville": { lat: -37.6560, lng: 145.5138 },
+  "Cowes": { lat: -38.4507, lng: 145.2415 },
+  "San Remo": { lat: -38.5255, lng: 145.3670 },
+  "Ballarat": { lat: -37.5622, lng: 143.8503 },
+  "Bendigo": { lat: -36.7570, lng: 144.2787 },
+  "Daylesford": { lat: -37.3465, lng: 144.1430 },
+  "Warrnambool": { lat: -38.3813, lng: 142.4845 },
+  "Mornington": { lat: -38.2212, lng: 145.0401 },
+
+  // Added Regional Towns & Corridor Nodes for Better Routing Choices
+  "Kerang": { lat: -35.7197, lng: 143.9142 },
+  "Quambatook": { lat: -35.8532, lng: 143.5135 },
+  "Swan Hill": { lat: -35.3411, lng: 143.5539 },
+  "Echuca": { lat: -36.1360, lng: 144.7483 },
+  "Rochester": { lat: -36.3622, lng: 144.7011 },
+  "Shepparton": { lat: -36.3813, lng: 145.3996 },
+  "Horsham": { lat: -36.7118, lng: 142.2035 },
+  "Ararat": { lat: -37.2847, lng: 142.9275 },
+  "Stawell": { lat: -37.0592, lng: 142.7758 },
+  "Toowoomba": { lat: -27.5598, lng: 151.9507 },
+  "Goondiwindi": { lat: -28.5453, lng: 150.3101 },
+  "Moree": { lat: -29.4632, lng: 149.8415 },
+  "Narrabri": { lat: -30.3249, lng: 149.7821 },
+  "Parkes": { lat: -33.1367, lng: 148.1751 },
+  "Forbes": { lat: -33.3853, lng: 148.0076 },
+  "West Wyalong": { lat: -33.9167, lng: 147.2000 },
+  "Hay": { lat: -34.5083, lng: 144.8417 },
+  "Narrandera": { lat: -34.7483, lng: 146.5517 },
+  "Grafton": { lat: -29.6932, lng: 152.9288 },
+  "Ballina": { lat: -28.8688, lng: 153.5651 },
+  "Tweed Heads": { lat: -28.1714, lng: 153.5415 },
+  "Kempsey": { lat: -31.0833, lng: 152.8333 },
+  "Taree": { lat: -31.9069, lng: 152.4589 },
+  "Maitland": { lat: -32.7333, lng: 151.5500 },
+  "Tamworth": { lat: -31.0907, lng: 150.9315 },
+  "Armidale": { lat: -30.5122, lng: 151.6661 },
+  "Warwick": { lat: -28.2167, lng: 152.0333 },
+  "Charleville": { lat: -26.4017, lng: 146.2411 },
+  "Kiama": { lat: -34.6710, lng: 150.8550 },
+  "Penrith": { lat: -33.7507, lng: 150.6942 },
+  "Katoomba": { lat: -33.7126, lng: 150.3119 },
+  "Lithgow": { lat: -33.4836, lng: 150.1550 },
+  "Southport": { lat: -27.9734, lng: 153.4079 },
+  "Parramatta": { lat: -33.8150, lng: 151.0011 },
+  "Chatswood": { lat: -33.7961, lng: 151.1820 },
+  "Queanbeyan": { lat: -35.3533, lng: 149.2339 },
+  "Queanbeyan NSW": { lat: -35.3533, lng: 149.2339 },
+  "Queanbeyan ACT": { lat: -35.3533, lng: 149.2339 },
+
+  // Major Points of Interest (POIs) / Landmarks
+  "Uluru": { lat: -25.3444, lng: 131.0369 },
+  "Ayers Rock": { lat: -25.3444, lng: 131.0369 },
+  "Sydney Opera House": { lat: -33.8568, lng: 151.2153 },
+  "Twelve Apostles": { lat: -38.6621, lng: 143.1051 },
+  "Great Ocean Road Twelve Apostles": { lat: -38.6621, lng: 143.1051 },
+  "Sovereign Hill": { lat: -37.5739, lng: 143.8681 },
+  "Phillip Island Penguin Parade": { lat: -38.5113, lng: 145.1481 },
+  "Cradle Mountain": { lat: -41.6845, lng: 145.9281 },
+  "Port Arthur Historic Site": { lat: -43.1491, lng: 147.8548 },
+  "Kangaroo Island": { lat: -35.7752, lng: 137.2142 },
+  "Coober Pedy Opal Fields": { lat: -29.0135, lng: 134.7544 },
+  "Daintree Rainforest": { lat: -16.1667, lng: 145.4167 },
+  "Kings Canyon": { lat: -24.2544, lng: 131.5714 },
+  "Ningaloo Reef Resort": { lat: -21.9167, lng: 114.1333 },
+  "Great Barrier Reef Marine Park": { lat: -18.2871, lng: 147.6992 },
+
+  // --- COMPREHENSIVE AUSTRALIAN GAZETTEER EXPANSION (100+ EXTRA TOWNS) ---
+
+  // Melbourne to Adelaide Corridor
+  "Beaufort": { lat: -37.4314, lng: 143.3833 },
+  "Bacchus Marsh": { lat: -37.6750, lng: 144.4370 },
+  "Nhill": { lat: -36.3328, lng: 141.6503 },
+  "Kaniva": { lat: -36.3794, lng: 141.2403 },
+  "Bordertown": { lat: -36.3150, lng: 140.7728 },
+  "Keith": { lat: -36.1011, lng: 140.3533 },
+  "Tintinara": { lat: -35.8889, lng: 140.0594 },
+  "Coonalpyn": { lat: -35.6931, lng: 139.8558 },
+  "Tailem Bend": { lat: -35.2536, lng: 139.4556 },
+  "Murray Bridge": { lat: -35.1167, lng: 139.2667 },
+  "Mount Barker": { lat: -35.0683, lng: 138.8594 },
+
+  // Hume Highway Corridor (VIC & NSW)
+  "Benalla": { lat: -36.5517, lng: 145.9818 },
+  "Chiltern": { lat: -36.1517, lng: 146.6117 },
+  "Holbrook": { lat: -35.7233, lng: 147.3139 },
+  "Jugiong": { lat: -34.8239, lng: 148.4239 },
+  "Marulan": { lat: -34.7214, lng: 150.0094 },
+  "Berrima": { lat: -34.4897, lng: 150.3342 },
+  "Mittagong": { lat: -34.4444, lng: 150.4489 },
+  "Bowral": { lat: -34.4792, lng: 150.4181 },
+  "Campbelltown": { lat: -34.0647, lng: 150.8142 },
+
+  // Pacific Highway & Coastal NSW
+  "Gosford": { lat: -33.4267, lng: 151.3417 },
+  "Wyong": { lat: -33.2819, lng: 151.4239 },
+  "Port Stephens": { lat: -32.7236, lng: 152.1228 },
+  "Forster": { lat: -32.1814, lng: 152.5122 },
+  "Nambucca Heads": { lat: -30.6433, lng: 152.9989 },
+
+  // New England Highway & Inland NSW/QLD
+  "Singleton": { lat: -32.5639, lng: 151.1764 },
+  "Muswellbrook": { lat: -32.2611, lng: 150.8889 },
+  "Scone": { lat: -32.0489, lng: 150.8622 },
+  "Murrurundi": { lat: -31.7614, lng: 150.8267 },
+  "Quirindi": { lat: -31.5019, lng: 150.6811 },
+  "Guyra": { lat: -30.2222, lng: 151.6706 },
+  "Glen Innes": { lat: -29.7369, lng: 151.7378 },
+  "Tenterfield": { lat: -29.0556, lng: 152.0183 },
+  "Stanthorpe": { lat: -28.6558, lng: 151.9347 },
+
+  // Eyre Highway / Nullarbor Corridor (SA & WA)
+  "Port Wakefield": { lat: -34.1842, lng: 138.1500 },
+  "Crystal Brook": { lat: -33.3494, lng: 138.2036 },
+  "Kimba": { lat: -33.1389, lng: 136.4172 },
+  "Wudinna": { lat: -33.0483, lng: 135.4594 },
+  "Streaky Bay": { lat: -32.7969, lng: 134.2106 },
+  "Ceduna": { lat: -32.1264, lng: 133.6739 },
+  "Penong": { lat: -31.9272, lng: 133.0133 },
+  "Yalata": { lat: -31.4819, lng: 131.8389 },
+  "Nullarbor": { lat: -31.4428, lng: 130.9039 },
+  "Border Village": { lat: -31.6406, lng: 129.0022 },
+  "Eucla": { lat: -31.6792, lng: 128.8822 },
+  "Madura": { lat: -31.9058, lng: 127.0117 },
+  "Cocklebiddy": { lat: -32.0433, lng: 126.0967 },
+  "Caiguna": { lat: -32.2778, lng: 125.4839 },
+  "Balladonia": { lat: -32.3533, lng: 123.6339 },
+  "Norseman": { lat: -32.1972, lng: 121.7817 },
+  "Coolgardie": { lat: -30.9503, lng: 121.1642 },
+  "Southern Cross": { lat: -31.2294, lng: 119.3242 },
+  "Merredin": { lat: -31.4833, lng: 118.2667 },
+  "Northam": { lat: -31.6539, lng: 116.6661 },
+
+  // Stuart Highway Corridor (NT & SA)
+  "Glendambo": { lat: -30.9850, lng: 135.7369 },
+  "Marla": { lat: -27.2958, lng: 133.6214 },
+  "Kulgera": { lat: -25.8369, lng: 133.3039 },
+  "Erldunda": { lat: -25.1975, lng: 133.2014 },
+  "Ti Tree": { lat: -22.1311, lng: 133.4189 },
+  "Barrow Creek": { lat: -21.5206, lng: 133.8864 },
+  "Wycliffe Well": { lat: -20.7761, lng: 134.2403 },
+  "Renner Springs": { lat: -18.3228, lng: 133.8058 },
+  "Elliott": { lat: -17.5550, lng: 133.5392 },
+  "Daly Waters": { lat: -16.2525, lng: 133.3697 },
+  "Larrimah": { lat: -15.5744, lng: 133.2206 },
+  "Mataranka": { lat: -14.9250, lng: 133.1367 },
+  "Pine Creek": { lat: -13.8247, lng: 131.8319 },
+  "Adelaide River": { lat: -13.2403, lng: 131.1075 },
+
+  // Bruce Highway & Coastal QLD Corridor
+  "Hervey Bay": { lat: -25.2986, lng: 152.8535 },
+  "Yeppoon": { lat: -23.1258, lng: 150.7389 },
+  "Marlborough": { lat: -22.8167, lng: 149.8833 },
+  "Proserpine": { lat: -20.4022, lng: 148.5833 },
+  "Airlie Beach": { lat: -20.2678, lng: 148.7164 },
+  "Ayr": { lat: -19.5714, lng: 147.4069 },
+  "Ingham": { lat: -18.6500, lng: 146.1667 },
+  "Cardwell": { lat: -18.2667, lng: 146.0333 },
+  "Tully": { lat: -17.9333, lng: 145.9167 },
+  "Innisfail": { lat: -17.5222, lng: 146.0314 },
+  "Port Douglas": { lat: -16.4833, lng: 145.4667 },
+
+  // Tasmania Expanded
+  "Devonport": { lat: -41.1779, lng: 146.3575 },
+  "Burnie": { lat: -41.0531, lng: 145.9083 },
+  "Wynyard": { lat: -40.9889, lng: 145.7275 },
+  "Stanley": { lat: -40.7633, lng: 145.2908 },
+  "Strahan": { lat: -42.1528, lng: 145.3314 },
+  "Queenstown": { lat: -42.0808, lng: 145.5564 },
+  "Zeehan": { lat: -41.8797, lng: 145.3400 },
+  "Sheffield": { lat: -41.3850, lng: 146.3267 },
+  "Deloraine": { lat: -41.5236, lng: 146.2575 },
+  "Campbell Town": { lat: -41.9286, lng: 147.4939 },
+  "Ross": { lat: -42.0294, lng: 147.4936 },
+  "Oatlands": { lat: -42.2981, lng: 147.3739 },
+  "Richmond": { lat: -42.7328, lng: 147.4392 },
+  "New Norfolk": { lat: -42.7828, lng: 147.0594 },
+  "Huonville": { lat: -43.0308, lng: 147.0311 },
+  "Geeveston": { lat: -43.1650, lng: 146.9242 },
+
+  // Western Australia Coastal & Regional
+  "Fremantle": { lat: -32.0569, lng: 115.7439 },
+  "Mandurah": { lat: -32.5361, lng: 115.7250 },
+  "Rockingham": { lat: -32.2814, lng: 115.7267 },
+  "Augusta": { lat: -34.3158, lng: 115.1583 },
+  "Pemberton": { lat: -34.4439, lng: 116.0339 },
+  "Walpole": { lat: -34.9778, lng: 116.7336 },
+  "Denmark": { lat: -34.9594, lng: 117.3528 },
+  "Kalbarri": { lat: -27.7125, lng: 114.1658 },
+  "Monkey Mia": { lat: -25.7936, lng: 113.7197 },
+  "Denham": { lat: -25.9264, lng: 113.5358 },
+  "Coral Bay": { lat: -23.1417, lng: 113.7714 },
+  "Onslow": { lat: -21.6353, lng: 115.1114 },
+  "Dampier": { lat: -20.6558, lng: 116.7117 },
+  "Roebourne": { lat: -20.7761, lng: 117.1350 },
+  "Derby": { lat: -17.3178, lng: 123.6339 },
+  "Fitzroy Crossing": { lat: -18.1953, lng: 125.5647 },
+  "Halls Creek": { lat: -18.2239, lng: 127.6664 },
+  "Kununurra": { lat: -15.7736, lng: 128.7383 },
+
+  // Queensland Sunshine Coast & Hinterland
+  "Maleny": { lat: -26.7578, lng: 152.8512 },
+  "Montville": { lat: -26.6872, lng: 152.8942 },
+  "Mapleton": { lat: -26.6264, lng: 152.8625 },
+  "Nambour": { lat: -26.6272, lng: 152.9592 },
+  "Maroochydore": { lat: -26.6578, lng: 153.0881 },
+  "Caloundra": { lat: -26.8028, lng: 153.1325 },
+  "Mooloolaba": { lat: -26.6811, lng: 153.1186 },
+  "Coolum Beach": { lat: -26.5292, lng: 153.0883 },
+  "Tewantin": { lat: -26.3908, lng: 153.0369 },
+  "Sunshine Coast": { lat: -26.6500, lng: 153.0667 },
+  "Beerwah": { lat: -26.8558, lng: 152.9578 },
+  "Eumundi": { lat: -26.4756, lng: 152.9519 },
+  "Peregian Beach": { lat: -26.4808, lng: 153.0950 },
+  "Landsborough": { lat: -26.8081, lng: 152.9664 },
+  "Glass House Mountains": { lat: -26.8983, lng: 152.9550 },
+  "Kenilworth": { lat: -26.5986, lng: 152.7272 },
+  "Kilkivan": { lat: -26.0861, lng: 152.2358 },
+  "Woodford": { lat: -26.9536, lng: 152.7725 },
+  "Kilcoy": { lat: -26.9422, lng: 152.5658 },
+
+  // Gold Coast Hinterland & QLD Regional
+  "Tamborine Mountain": { lat: -27.9258, lng: 153.1819 },
+  "Canungra": { lat: -28.0169, lng: 153.1611 },
+  "Springbrook": { lat: -28.2322, lng: 153.2758 },
+  "Beechmont": { lat: -28.1250, lng: 153.1889 },
+  "Boonah": { lat: -27.9983, lng: 152.6822 },
+  "Beaudesert": { lat: -27.9867, lng: 152.9961 },
+  "Esk": { lat: -27.2417, lng: 152.4236 },
+  "Toogoolawah": { lat: -27.0867, lng: 152.3789 },
+  "Gatton": { lat: -27.5611, lng: 152.2764 },
+  "Laidley": { lat: -27.6319, lng: 152.3931 },
+  "Dalby": { lat: -27.1844, lng: 151.2631 },
+  "Chinchilla": { lat: -26.7378, lng: 150.6289 },
+  "Miles": { lat: -26.6575, lng: 150.1836 },
+  "Longreach": { lat: -23.4419, lng: 144.2503 },
+  "Winton": { lat: -22.3886, lng: 143.0825 },
+  "Cloncurry": { lat: -20.7042, lng: 140.5050 },
+
+  // NSW Coast & Hinterland
+  "Bangalow": { lat: -28.6869, lng: 153.5281 },
+  "Mullumbimby": { lat: -28.5528, lng: 153.4989 },
+  "Nimbin": { lat: -28.5986, lng: 153.2269 },
+  "Murwillumbah": { lat: -28.3283, lng: 153.3986 },
+  "Lismore": { lat: -28.8089, lng: 153.2761 },
+  "Casino": { lat: -28.8622, lng: 153.0489 },
+  "Yamba": { lat: -29.4319, lng: 153.3619 },
+  "Woolgoolga": { lat: -30.1111, lng: 153.1972 },
+  "Dorigo": { lat: -30.3472, lng: 152.7139 },
+  "Bellingen": { lat: -30.4519, lng: 152.8986 },
+  "Urunga": { lat: -30.6833, lng: 152.8500 },
+  "South West Rocks": { lat: -30.8864, lng: 153.0397 },
+  "Wauchope": { lat: -31.4639, lng: 152.7308 },
+  "Gloucester": { lat: -32.0117, lng: 151.9589 },
+  "Dungog": { lat: -32.4039, lng: 151.7589 },
+  "Tea Gardens": { lat: -32.6681, lng: 152.1628 },
+  "Nelson Bay": { lat: -32.7183, lng: 152.1481 },
+  "Terrigal": { lat: -33.4456, lng: 151.4442 },
+  "Avoca Beach": { lat: -33.4683, lng: 151.4319 },
+  "The Entrance": { lat: -33.3444, lng: 151.4986 },
+  "Berry": { lat: -34.7761, lng: 150.6978 },
+  "Gerringong": { lat: -34.7431, lng: 150.8286 },
+  "Kangaroo Valley": { lat: -34.7333, lng: 150.5333 },
+  "Huskisson": { lat: -35.0381, lng: 150.6728 },
+  "Vincentia": { lat: -35.0711, lng: 150.6681 },
+  "Milton": { lat: -35.3183, lng: 150.4389 },
+  "Moruya": { lat: -35.9100, lng: 150.0811 },
+  "Narooma": { lat: -36.2139, lng: 150.1289 },
+  "Tilba Tilba": { lat: -36.2611, lng: 150.0889 },
+  "Merimbula": { lat: -36.8903, lng: 149.9075 },
+  "Pambula": { lat: -36.9389, lng: 149.8661 },
+  "Braidwood": { lat: -35.4483, lng: 149.8000 },
+  "Leura": { lat: -33.7083, lng: 150.3333 },
+  "Blackheath": { lat: -33.6333, lng: 150.2833 },
+  "Springwood": { lat: -33.6983, lng: 150.5650 },
+
+  // Victoria Towns
+  "Hepburn Springs": { lat: -37.3111, lng: 144.1389 },
+  "Venus Bay": { lat: -38.6958, lng: 145.8111 },
+  "Flinders": { lat: -38.4800, lng: 145.0219 },
+  "Red Hill": { lat: -38.3719, lng: 145.0069 },
+  "Olinda": { lat: -37.8539, lng: 145.3681 },
+  "Sassafras": { lat: -37.8681, lng: 145.3489 },
+  "Belgrave": { lat: -37.9139, lng: 145.3533 },
+  "Orbost": { lat: -37.7028, lng: 148.4528 },
+  "Cann River": { lat: -37.5681, lng: 149.1517 },
+  "Mallacoota": { lat: -37.5528, lng: 149.7558 },
+
+  // South Australia & NT & Tasmania
+  "Hahndorf": { lat: -35.0292, lng: 138.8094 },
+  "Victor Harbor": { lat: -35.5500, lng: 138.6167 },
+  "Goolwa": { lat: -35.5000, lng: 138.7833 },
+  "McLaren Vale": { lat: -35.2181, lng: 138.5442 },
+  "Penola": { lat: -37.3778, lng: 140.8358 },
+  "Robe": { lat: -37.1639, lng: 139.7583 },
+  "Kingston SE": { lat: -36.8333, lng: 139.8500 },
+  "Dunsborough": { lat: -33.6167, lng: 115.1000 },
+  "Yallingup": { lat: -33.6483, lng: 115.0267 },
+  "Bridgetown": { lat: -33.9569, lng: 116.1383 },
+  "Manjimup": { lat: -34.2417, lng: 116.1458 },
+  "Bicheno": { lat: -41.8750, lng: 148.3000 },
+  "St Helens": { lat: -41.3219, lng: 148.2483 },
+  "Swansea": { lat: -42.1228, lng: 148.0739 },
+  "Coles Bay": { lat: -42.1239, lng: 148.2869 },
+  "Jabiru": { lat: -12.6708, lng: 132.8361 },
+  "Nitmiluk": { lat: -14.3167, lng: 132.4167 },
+  "Yulara": { lat: -25.2406, lng: 130.9889 }
+};
+
+/* ---------- Real distance math, ported from data/australianData.tsx ---------- */
+function haversineDistance(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+const CIRCUITY_FACTOR = 1.28; // same road-vs-crow-flies factor used across the full app
+function calculateDrivingDistance(a,b,factor){ return Math.round(haversineDistance(a.lat,a.lng,b.lat,b.lng)*(factor||CIRCUITY_FACTOR)); }
+
+/* ---------- LIVE charger lookup — OpenChargeMap's public API, called
+   directly from the browser. No API key, no backend needed: this is the
+   exact same endpoint the full app's server proxies, but OCM's API is
+   open for client-side GET requests, so a standalone file can call it
+   directly. Falls back to an estimated stop if this fails (offline, or
+   OCM has nothing nearby) — same fallback behaviour as the full app. */
+function mapOcmResult(p, anchor){
+  const addr = p.AddressInfo || {};
+  const conns = p.Connections || [];
+  // Prefer higher-power connections and more bays — same principle as the
+  // full app's Rule 4 (hardware preference) and Rule 16 (multi-bay
+  // redundancy), but using OpenChargeMap's real NumberOfPoints field rather
+  // than any fabricated reliability score.
+  const bestConn = conns.slice().sort((a,b)=>(b.PowerKW||0)-(a.PowerKW||0))[0] || {};
+  return {
+    name: addr.Title || "Public EV Charger",
+    operator: (p.OperatorInfo && p.OperatorInfo.Title) || "Unknown network",
+    connectionType: (bestConn.ConnectionType && bestConn.ConnectionType.Title) || "DC Fast Charger",
+    powerKw: bestConn.PowerKW || null,
+    bays: p.NumberOfPoints || conns.length || null,
+    usageCost: p.UsageCost || null,
+    lastUpdated: p.DateLastStatusUpdate || null,
+    lat: addr.Latitude, lng: addr.Longitude,
+    distanceFromAnchor: anchor ? Math.round(haversineDistance(anchor.lat, anchor.lng, addr.Latitude, addr.Longitude)) : null,
+    isLive: true
+  };
+}
+
+async function ocmSearch(lat, lng, radiusKm, maxresults){
+  const url = `https://api.openchargemap.io/v3/poi/?output=json&latitude=${lat}&longitude=${lng}&distance=${radiusKm}&distanceunit=KM&countrycode=AU&maxresults=${maxresults}&compact=true&verbose=false`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("OCM request failed: " + res.status);
+  const pois = await res.json();
+  return Array.isArray(pois) ? pois.filter(p => p.AddressInfo && p.AddressInfo.Latitude && p.Connections && p.Connections.length>0) : [];
+}
+
+/* Used by the automatic route planner. Widens the search progressively
+   (35km, then 60km, then 120km) rather than giving up quickly — a real
+   charger a bit further away is always better than an invented stop at a
+   town that has none, per how the original app's corridor rules worked. */
+async function findNearbyCharger(lat, lng){
+  const radii = [35, 60, 120];
+  for (const r of radii){
+    try{
+      const pois = await ocmSearch(lat, lng, r, 6);
+      if (!pois.length) continue;
+      const ranked = pois.map(p=>mapOcmResult(p, {lat,lng}))
+        .sort((a,b)=> (b.powerKw||0)+(b.bays||1)*10 - ((a.powerKw||0)+(a.bays||1)*10));
+      return ranked[0];
+    }catch(e){ return null; } // network/offline — caller falls back to an honest placeholder
+  }
+  return null; // genuinely nothing found within 120km — be honest about that rather than inventing a stop
+}
+
+/* For manual "add a stop" — let the person pick a real charger themselves
+   instead of guessing a distance. Returns up to 8 nearby results, or an
+   { error } if the search couldn't run at all. */
+async function searchChargersNear(townName, radiusKm){
+  const anchor = findLocation(townName);
+  if (!anchor) return { error: `Couldn't find "${townName}" in the location list.` };
+  try{
+    const pois = await ocmSearch(anchor.lat, anchor.lng, radiusKm||35, 10);
+    if (!pois.length) return { results: [] };
+    const results = pois.map(p=>mapOcmResult(p, anchor)).sort((a,b)=> a.distanceFromAnchor - b.distanceFromAnchor);
+    return { results };
+  }catch(e){ return { error: "Couldn't reach OpenChargeMap — check your internet connection." }; }
+}
+
+function gmapsLegUrl(fromLoc, toLoc){
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(fromLoc.name+', Australia')}&destination=${encodeURIComponent(toLoc.name+', Australia')}&travelmode=driving`;
+}
+function gmapsFullTripUrl(itinerary){
+  const pts = itinerary.filter(l=>l.kind!=='stay' && l.kind!=='sidetrip');
+  if (!pts.length) return "https://maps.google.com";
+  const origin = pts[0].from.name, destination = pts[pts.length-1].to.name;
+  const rawWaypoints = pts.slice(0,-1).map(l=>l.to.name).filter(n=>n && n!==destination);
+  const waypoints = rawWaypoints.filter((n,i,arr)=> n!==arr[i-1]); // drop consecutive duplicates (e.g. overnight-in-place)
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin+', Australia')}&destination=${encodeURIComponent(destination+', Australia')}&travelmode=driving`;
+  if (waypoints.length) url += `&waypoints=${encodeURIComponent(waypoints.map(w=>w+', Australia').join('|'))}`;
+  return url;
+}
+
+function findLocation(name){
+  if (!name) return null;
+  const keys = Object.keys(NATIONAL_LOCATIONS);
+  const exact = keys.find(k=>k.toLowerCase()===name.trim().toLowerCase());
+  if (exact) return {name:exact, ...NATIONAL_LOCATIONS[exact]};
+  const partial = keys.find(k=>k.toLowerCase().includes(name.trim().toLowerCase()));
+  if (partial) return {name:partial, ...NATIONAL_LOCATIONS[partial]};
+  return null;
+}
+
+const RAW_CSV = `Brand,Model,Variant,MSRP AUD,Driveaway Est AUD,WLTP Range km,Battery kWh,Body Style,Efficiency Wh/km,Drive Type,Screen,Sunroof,V2L,Boot Space,Apple CarPlay,Market Status
+MG,MG4 EV Urban,Essence 43,29990,31990,316,43,Hatch,136,FWD,10.25in,No,Yes,382,Yes,Available
+MG,MG4 EV Urban,Essence 54,32990,34990,405,54,Hatch,133,FWD,10.25in,No,Yes,382,Yes,Available
+GAC Aion,UT,Premium,31990,32990,430,60,Hatch,140,FWD,14.6in,No,No,321,Yes,Available
+GAC Aion,UT,Luxury,35990,37590,430,60,Hatch,140,FWD,14.6in,Glass,No,321,Yes,Available
+BYD,Atto 1,Essential,23990,26990,300,38,Hatch,130,FWD,12.8in,No,Yes,230,Yes,Forecast Probable
+BYD,Atto 2,Premium,31990,34990,345,45.1,SUV,145,FWD,12.8in,Yes,Yes,400,Yes,Confirmed Incoming
+BYD,Atto 3,Standard,42990,44990,345,49.9,SUV,145,FWD,12.8in,Yes,Yes,440,Yes,Available
+BYD,Atto 3,Extended,44990,46990,420,60.5,SUV,150,FWD,15.6in,Yes,Yes,440,Yes,Available
+BYD,Dolphin,Dynamic,36890,38890,340,44.9,Hatch,132,FWD,12.8in,No,Yes,345,Yes,Available
+BYD,Dolphin,Premium,42990,44990,427,60.4,Hatch,140,FWD,12.8in,No,Yes,345,Yes,Available
+BYD,Seal,Dynamic,49138,51990,460,61.4,Sedan,134,RWD,15.6in,Glass,Yes,400,Yes,Available
+BYD,Seal,Premium,52990,55990,570,82.5,Sedan,145,RWD,15.6in,Glass,Yes,400,Yes,Available
+BYD,Seal,Performance,65990,68990,520,82.5,Sedan,159,AWD,15.6in,Glass,Yes,400,Yes,Available
+BYD,Sealion 7,Dynamic,53990,56990,480,71.8,SUV,150,RWD,15.6in,Glass,Yes,520,Yes,Available
+BYD,Sealion 7,Premium,58990,61990,567,82.5,SUV,146,RWD,15.6in,Glass,Yes,520,Yes,Available
+BYD,Sealion 7,Performance,63990,66990,520,82.5,SUV,160,AWD,15.6in,Glass,Yes,520,Yes,Available
+Tesla,Model 3,RWD,54900,57900,513,60,Sedan,117,RWD,15.4in,Glass,No,594,No,Available
+Tesla,Model 3,Long Range,64900,67900,629,75,Sedan,119,AWD,15.4in,Glass,No,594,No,Available
+Tesla,Model 3,Performance,80900,84500,528,75,Sedan,142,AWD,15.4in,Glass,No,594,No,Available
+Tesla,Model Y,RWD,60900,63900,455,60,SUV,140,RWD,15in,Glass,No,854,No,Available
+Tesla,Model Y,Long Range,69900,72900,533,75,SUV,141,AWD,15in,Glass,No,854,No,Available
+Tesla,Model Y,Performance,82900,86500,514,75,SUV,154,AWD,15in,Glass,No,854,No,Available
+MG,MG4,Excite 51,37990,39990,350,51,Hatch,146,RWD,10.25in,No,Yes,363,Yes,Available
+MG,MG4,Excite 64,41990,43990,450,64,Hatch,142,RWD,10.25in,No,Yes,363,Yes,Available
+MG,MG4,64 Essence,42990,44990,435,64,Hatch,147,RWD,10.25in,No,Yes,363,Yes,Available
+MG,MG4,77 Essence,47990,49990,530,77,Hatch,145,RWD,10.25in,No,Yes,363,Yes,Available
+MG,MG4,XPower,55990,58990,385,64,Hatch,166,AWD,10.25in,No,Yes,363,Yes,Available
+MG,ZS EV,Excite,34990,36990,320,50.3,SUV,157,FWD,10.1in,No,No,359,Yes,Available
+MG,ZS EV,Essence,37990,39990,320,50.3,SUV,157,FWD,10.1in,Yes,No,359,Yes,Available
+MG,ZS EV,Long Range,39990,42990,440,72.6,SUV,165,FWD,10.1in,Yes,No,359,Yes,Available
+MG,S6 EV,Standard,44990,47990,420,62,SUV,148,RWD,15.6in,No,Yes,500,Yes,Available
+MG,S6 EV,Long Range,49990,52990,530,77,SUV,145,RWD,15.6,Yes,Yes,500,Yes,Available
+Geely,EX5,Inspire,45990,48990,450,68.4,SUV,150,FWD,15.4in,Yes,Yes,461,Yes,Available
+Geely,EX5,Premium,49990,52990,450,68.4,SUV,150,FWD,15.4in,Yes,Yes,461,Yes,Available
+Geely,EX2,Standard,29990,32990,410,58,Hatch,140,RWD,14.6in,No,No,375,Yes,Forecast Probable
+GAC Aion,V,Standard,49990,52990,400,65,SUV,150,FWD,14.6in,No,Yes,427,Yes,Confirmed Incoming
+GAC Aion,V,Luxury,55990,58990,520,75,SUV,145,FWD,14.6in,Yes,Yes,427,Yes,Confirmed Incoming
+Kia,EV3,Air,47990,50990,436,58.3,SUV,145,FWD,12.3in,No,Yes,460,Yes,Available
+Kia,EV3,Earth,52990,55990,600,81.4,SUV,142,FWD,12.3in,No,Yes,460,Yes,Available
+Kia,EV3,GT-Line,57990,60990,560,81.4,SUV,149,FWD,12.3in,Yes,Yes,460,Yes,Available
+Kia,EV5,Air,52990,55990,400,64.2,SUV,161,FWD,12.3in,No,Yes,513,Yes,Available
+Kia,EV5,Earth,56990,59990,555,81.4,SUV,150,FWD,12.3in,Yes,Yes,513,Yes,Available
+Kia,EV5,GT-Line,63990,66990,500,81.4,SUV,163,AWD,12.3in,Yes,Yes,513,Yes,Available
+Kia,EV6,Air,69990,72990,528,77.4,SUV,149,RWD,Dual 12.3,No,Yes,490,Yes,Available
+Kia,EV6,GT-Line,72990,75990,528,77.4,SUV,155,AWD,Dual 12.3,Yes,Yes,490,Yes,Available
+Kia,EV6,GT,92990,96990,424,77.4,SUV,182,AWD,Dual 12.3,Yes,Yes,490,Yes,Available
+Kia,EV9,Air,91990,95990,443,76.1,SUV,195,RWD,Dual 12.3,No,Yes,828,Yes,Available
+Kia,EV9,Earth,102990,106990,512,99.8,SUV,202,AWD,Dual 12.3,No,Yes,828,Yes,Available
+Kia,EV9,GT-Line,115990,120990,505,99.8,SUV,210,AWD,Dual 12.3,Yes,Yes,828,Yes,Available
+Hyundai,Inster,Standard,34990,37990,300,42,SUV,130,FWD,10.25in,No,No,280,Yes,Confirmed Incoming
+Hyundai,Inster,Extended,39990,42990,355,49,SUV,135,FWD,10.25in,No,Yes,280,Yes,Confirmed Incoming
+Hyundai,Kona Electric,Standard,49990,52990,377,48.6,SUV,146,FWD,12.3in,No,No,466,Yes,Available
+Hyundai,Kona Electric,Extended,54990,57990,505,64.8,SUV,145,FWD,12.3in,Yes,No,466,Yes,Available
+Hyundai,Ioniq 5,Standard,62000,65000,384,58,SUV,143,RWD,12.3in,No,No,527,Yes,Available
+Hyundai,Ioniq 5,Dynamiq,69990,72990,507,77.4,SUV,155,RWD,12.3in,Yes,Yes,527,Yes,Available
+Hyundai,Ioniq 5,Epiq,76990,79990,454,77.4,SUV,169,AWD,12.3in,Yes,Yes,527,Yes,Available
+Hyundai,Ioniq 6,Dynamiq,65500,68500,614,77.4,Sedan,135,RWD,12.3in,No,Yes,401,Yes,Available
+Hyundai,Ioniq 6,Techniq,74990,77990,614,77.4,Sedan,135,RWD,12.3in,Yes,Yes,401,Yes,Available
+Hyundai,Ioniq 6,Epiq,81000,84500,519,77.4,Sedan,149,AWD,12.3in,Yes,Yes,401,Yes,Available
+Leapmotor,B10,Standard,34990,36990,380,48,SUV,140,RWD,14.6in,No,No,420,Yes,Confirmed Incoming
+Leapmotor,B10,Design,38990,40990,420,56,SUV,145,RWD,14.6in,Yes,No,420,Yes,Confirmed Incoming
+Leapmotor,C10,Style,41990,44990,420,69.9,SUV,151,RWD,14.6in,No,Yes,581,Yes,Available
+Leapmotor,C10,Luxury,45990,48990,530,69.9,SUV,145,RWD,14.6in,Yes,Yes,581,Yes,Available
+XPeng,G6,Standard,54990,57990,435,66,SUV,152,RWD,14.96in,Glass,Yes,571,Yes,Available
+XPeng,G6,Long Range,59990,62990,570,87.5,SUV,145,RWD,14.96in,Glass,Yes,571,Yes,Available
+Zeekr,X,RWD,56990,59990,540,66,SUV,142,RWD,14.6in,Glass,Yes,362,Yes,Available
+Zeekr,X,AWD,64990,67990,470,66,SUV,155,AWD,14.6in,Glass,Yes,362,Yes,Available
+Zeekr,7X,Standard,69990,73990,480,75,SUV,156,RWD,16in,Glass,Yes,600,Yes,Confirmed Incoming
+Zeekr,7X,Long Range,78990,82990,615,100,SUV,150,AWD,16in,Glass,Yes,600,Yes,Confirmed Incoming
+Polestar,2,Standard Range,62900,65900,518,69,Sedan,133,RWD,11.2in,No,No,405,Yes,Available
+Polestar,2,Long Range,67900,70900,655,82,Sedan,140,RWD,11.2in,Glass,No,405,Yes,Available
+Polestar,2,Dual Motor,71900,74900,591,82,Sedan,150,AWD,11.2in,Glass,No,405,Yes,Available
+Polestar,4,Standard Range,68900,71900,510,86,SUV Coupe,143,RWD,15.4in,Glass,No,526,Yes,Available
+Polestar,4,Long Range,78900,82900,620,100,SUV Coupe,150,AWD,15.4in,Glass,No,526,Yes,Available
+Volvo,EX30,Core,54990,57990,344,51,SUV,148,RWD,12.3in,No,No,318,Yes,Available
+Volvo,EX30,Single Motor,59990,62990,480,69,SUV,145,RWD,12.3in,Glass,No,318,Yes,Available
+Volvo,EX30,Twin Motor,69990,72990,460,69,SUV,150,AWD,12.3in,Glass,No,318,Yes,Available
+Volvo,XC40 Recharge,Single Motor,76990,79990,460,69,SUV,150,RWD,9in,No,No,452,Yes,Available
+Volvo,XC40 Recharge,Twin Motor,85990,89990,500,82,SUV,164,AWD,9in,Yes,No,452,Yes,Available
+Volvo,EX90,Single Motor,109990,114990,580,104,SUV,179,RWD,14.5in,Glass,No,655,Yes,Available
+Volvo,EX90,Twin Motor,124990,129990,600,111,SUV,180,AWD,14.5in,Glass,No,655,Yes,Available
+BMW,iX1,eDrive20,78900,82900,475,64.7,SUV,136,FWD,10.7in,No,No,490,Yes,Available
+BMW,iX1,xDrive30,84900,88900,440,64.7,SUV,165,AWD,10.7in,Yes,No,490,Yes,Available
+BMW,i4,eDrive35,89900,93900,483,70.2,Sedan,150,RWD,14.9in,Yes,No,470,Yes,Available
+BMW,i4,eDrive40,102900,106900,590,83.9,Sedan,142,RWD,14.9in,Yes,No,470,Yes,Available
+BMW,i4,M50,133900,139900,520,83.9,Sedan,161,AWD,14.9in,Yes,No,470,Yes,Available
+BMW,iX,xDrive40,110900,115900,425,76.6,SUV,180,AWD,14.9in,No,No,500,Yes,Available
+BMW,iX,xDrive50,136900,142900,630,111.5,SUV,180,AWD,14.9in,Panoramic,No,500,Yes,Available
+BMW,iX,M60,196900,204900,566,111.5,SUV,197,AWD,14.9in,Panoramic,No,500,Yes,Available
+Mercedes-Benz,EQA,250,85900,89900,560,70.5,SUV,150,FWD,10.25in,Yes,No,340,Yes,Available
+Mercedes-Benz,EQA,350 4MATIC,102900,106900,496,66.5,SUV,167,AWD,10.25in,Yes,No,340,Yes,Available
+Mercedes-Benz,EQE SUV,300,124900,129900,539,89,SUV,165,RWD,12.3in,Yes,No,520,Yes,Available
+Mercedes-Benz,EQE SUV,350,139900,145900,550,90.6,SUV,180,AWD,Hyperscreen,Yes,No,520,Yes,Available
+Mercedes-Benz,EQE SUV,500,164900,171900,505,90.6,SUV,190,AWD,Hyperscreen,Yes,No,520,Yes,Available
+Audi,Q4 e-tron,40,79900,83900,520,82,SUV,158,RWD,11.6in,No,No,520,Yes,Available
+Audi,Q4 e-tron,45,88900,92900,524,82,SUV,160,AWD,11.6in,Yes,No,520,Yes,Available
+Audi,Q8 e-tron,50,134900,140900,491,95,SUV,201,AWD,10.1in,Yes,No,569,Yes,Available
+Audi,Q8 e-tron,55,147900,153900,582,114,SUV,206,AWD,10.1in,Yes,No,569,Yes,Available
+Audi,e-tron GT,quattro,189900,196900,488,93,Sedan,190,AWD,12.3in,Glass,No,405,Yes,Available
+Audi,e-tron GT,RS,249900,257900,472,93,Sedan,202,AWD,12.3in,Carbon,No,366,Yes,Available
+Porsche,Macan Electric,Base,118400,124400,641,100,SUV,159,RWD,12.6in,No,No,540,Yes,Available
+Porsche,Macan Electric,4,133700,139700,613,100,SUV,165,AWD,12.6in,Panoramic,No,540,Yes,Available
+Porsche,Macan Electric,Turbo,180100,187100,591,100,SUV,188,AWD,12.6in,Panoramic,No,540,Yes,Available
+Porsche,Taycan,Base,174500,181500,590,89,Sedan,167,RWD,16.8in,No,No,407,Yes,Available
+Porsche,Taycan,4S,216300,224300,560,89,Sedan,177,AWD,16.8in,Glass,No,407,Yes,Available
+Porsche,Taycan,Turbo,307500,316500,630,105,Sedan,180,AWD,16.8in,Glass,No,407,Yes,Available
+Porsche,Taycan,Turbo S,363800,373800,558,105,Sedan,189,AWD,16.8in,Glass,No,407,Yes,Available
+GWM,Ora,Standard Range,35990,37990,310,48,Hatch,140,FWD,10.25in,No,No,228,Yes,Available
+GWM,Ora,Long Range,40990,42990,420,63,Hatch,138,FWD,10.25in,No,No,228,Yes,Available
+GWM,Ora,GT,43990,45990,400,63,Hatch,145,FWD,10.25in,Yes,No,228,Yes,Available
+Ford,E-Transit,Trend LWB,104990,109990,307,68,Van,220,RWD,12in,No,No,11300,Yes,Available
+LDV,eDeliver 7,Mid Roof LWB,66990,69990,320,88,Van,210,FWD,12.3in,No,Yes,6700,Yes,Available
+LDV,eDeliver 3,SWB,54990,57990,228,50.2,Van,210,FWD,7in,No,No,4800,Yes,Available
+LDV,eDeliver 9,LWB Mid,99990,104990,280,88.5,Van,245,RWD,10.1in,No,No,10900,Yes,Available
+LDV,eT60,Double Cab Ute,92990,95990,330,88.5,Ute / Truck,268,RWD,10.1in,No,No,1000,Yes,Available
+Foton,T5 Electric,Light Truck,140000,145000,180,81.1,Ute / Truck,380,RWD,8in,No,No,4500,No,Available
+BYD,Shark 6,Premium AWD,65000,68000,450,80,Ute / Truck,180,AWD,15.6in,Glass,Yes,1100,Yes,Confirmed Incoming
+Peugeot,e-Partner,Pro SWB,59990,62990,245,50,Van,170,FWD,8in,No,No,3800,Yes,Available
+Mercedes-Benz,eSprinter,Panel Van MWB,124900,129990,440,113,Van,230,RWD,10.25in,No,No,11000,Yes,Available
+Deepal,S07,Single Motor RWD,53900,56900,485,66.8,SUV,140,RWD,15.6in,Yes,Yes,445,Yes,Available
+Deepal,L07,Single Motor RWD,52900,55900,540,66.8,Sedan,130,RWD,15.6in,Yes,Yes,430,Yes,Available
+Denza,D9,Premium AWD,91990,95990,520,103,SUV,210,AWD,15.6in,Yes,Yes,910,Yes,Available
+Nico,ET5,Premium Touring,58900,61900,456,75,Sedan,140,RWD,12.8in,Glass,Yes,385,Yes,Available
+Nico,EL6,Performance SUV,72900,75900,483,75,SUV,155,AWD,12.8in,Glass,Yes,570,Yes,Available
+Xiaomi,SU7,Max Performance,74900,78900,643,101,Sedan,142,AWD,16.1in,Glass,No,517,Yes,Available
+Firefly,H1,Standard Hatch,29990,31990,320,42,Hatch,130,FWD,10.25in,No,No,280,Yes,Available
+Mazda,MX-30,Astina EV,44990,46990,224,35.5,SUV,165,FWD,8.8in,Yes,No,311,Yes,Available`;
+
+/* ============================================================
+   2. PORTED LOGIC — same functions as evData.ts in the full app
+   ============================================================ */
+function parseCSVLine(line){
+  const result = []; let cur = ""; let inQ = false;
+  for (let i=0;i<line.length;i++){
+    const c = line[i];
+    if (c === '"'){ inQ = !inQ; }
+    else if (c === ',' && !inQ){ result.push(cur.trim()); cur=""; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function mapBodyType(brand, model, bodyStyle){
+  const s = bodyStyle.toLowerCase(); const m = model.toLowerCase();
+  if (s.includes("hatch")) return "Hatchback";
+  if (s.includes("sedan")) return "Sedan";
+  if (s.includes("van")) return "Van";
+  if (s.includes("ute") || s.includes("truck") || s.includes("pickup")) return "Ute / Truck";
+  if (s.includes("performance") || s.includes("sport") || m.includes("taycan") || m.includes("e-tron gt")) return "Performance";
+  if (m.includes("atto 2")||m.includes("zs")||m.includes("ev3")||m.includes("kona")||m.includes("b10")||m.includes("zeekr x")||m.includes("ex30")||m.includes("ix1")||m.includes("eqa")) return "Compact SUV";
+  if (m.includes("atto 3")||m.includes("sealion")||m.includes("model y")||m.includes("s6")||m.includes("ex5")||m.includes("aion v")||m.includes("ev5")||m.includes("ioniq 5")||m.includes("c10")||m.includes("g6")||m.includes("zeekr 7x")||m.includes("polestar 4")||m.includes("q4")||m.includes("macan")) return "Medium SUV";
+  if (m.includes("009")||m.includes("ev6")||m.includes("ex90")||m.includes("ix")||m.includes("eqe")) return "Large SUV";
+  return "Medium SUV";
+}
+
+function getNumericTowingCapacity(capacity){
+  if (!capacity) return 0;
+  const match = capacity.replace(/,/g,"").match(/(\d+)\s*kg/i);
+  return match ? parseInt(match[1]) : 0;
+}
+
+function hasHeatPump(ev){
+  const b = (ev.brand||"").toLowerCase().trim();
+  const m = (ev.model||"").toLowerCase().trim();
+  return ["tesla","byd","zeekr","xpeng","polestar","volvo"].includes(b) ||
+    (b==="kia" && (m.includes("5")||m.includes("6")||m.includes("3")||m.includes("gt-line"))) ||
+    (b==="hyundai" && (m.includes("ioniq")||m.includes("kona")||m.includes("inster")));
+}
+
+function buildCatalog(){
+  const lines = RAW_CSV.split("\n").filter(l=>l.trim().length>0).slice(1);
+  return lines.map(line=>{
+    const cols = parseCSVLine(line);
+    if (cols.length < 5) return null;
+    const brand = cols[0]||"", model = cols[1]||"", trim = cols[2]||"";
+    const id = (brand+"-"+model+"-"+trim).toLowerCase().replace(/[^a-z0-9]+/g,"-");
+    const priceMSRP = parseInt(cols[3]) || 40000;
+    const driveawayEst = parseInt(cols[4]) || 42000;
+    const rangeWLTP = parseInt(cols[5]) || 350;
+    const batteryCapacity = parseFloat(cols[6]) || 50;
+    const chargeTime = batteryCapacity > 80 ? 32 : (batteryCapacity < 50 ? 25 : 30);
+    const bodyType = mapBodyType(brand, model, cols[7]||"SUV");
+    const efficiencyWhKm = parseInt(cols[8]) || 150;
+    const drivetrain = cols[9] || "RWD";
+    const seats = (model.toLowerCase().includes("ev9") || model.toLowerCase().includes("ex90")) ? 7 : 5;
+    const isLCTExempt = priceMSRP < 89332;
+    const isFBTExempt = isLCTExempt;
+
+    let towingCapacity = "0kg (Not Certified)";
+    const isAWD = drivetrain === "AWD";
+    const isMediumSUV = bodyType === "Medium SUV";
+    const isLargeSUV = bodyType === "Large SUV";
+    if (isLargeSUV || (isAWD && bodyType.includes("SUV"))) towingCapacity = "1500kg";
+    else if (isMediumSUV) towingCapacity = "1000kg";
+    else if (bodyType === "Compact SUV") towingCapacity = "750kg";
+    else if (brand==="Tesla" && model==="Model 3") towingCapacity = "1000kg";
+    else if (brand==="BMW" && model==="i4") towingCapacity = "1600kg";
+    else if (bodyType==="Sedan" && isAWD) towingCapacity = "1500kg";
+    else if (bodyType==="Sedan" || bodyType==="Performance") towingCapacity = "750kg";
+
+    const rangeScore = Math.min(10, Math.max(5, Math.round((rangeWLTP/65)*10)/10));
+    const valueScore = Math.min(10, Math.max(5, Math.round((55000/priceMSRP)*8*10)/10));
+    const comfortScore = bodyType.includes("Large") ? 9.0 : (bodyType.includes("Medium") ? 8.2 : 7.2);
+    const chargingScore = chargeTime<=25 ? 9.2 : (chargeTime<=28 ? 8.5 : 7.5);
+    const evScore = Math.round(((rangeScore+valueScore+comfortScore+chargingScore)/4)*10)/10;
+
+    return { id, brand, model, trim, priceMSRP, driveawayEst, rangeWLTP, batteryCapacity,
+      bodyType, fastChargeTimeMins: chargeTime, isLCTExempt, isFBTExempt, drivetrain,
+      efficiencyWhKm, seats, towingCapacity, evScore };
+  }).filter(Boolean);
+}
+
+const defaultAnswers = {
+  budget:'mid', budgetType:'outright', layout:[], carRole:'primary', towNeed:'none',
+  priorities:[], parking:'garage', trips:[], hasSolar:false,
+  safetyWeight:3, rangeWeight:4, priceWeight:3, chargingWeight:3, spaceWeight:3,
+  reputationWeight:3, esgWeight:3
+};
+
+// Ported directly from the full app's getWizardRecommendations()
+function getWizardRecommendations(answers, catalog){
+  const a = Object.assign({}, defaultAnswers, answers);
+  return catalog.map(ev=>{
+    let score = 100; const reasons = []; let dq = false;
+
+    if (a.budget==='budget'){ if (ev.driveawayEst>45000) score-=150; else { score+=30; reasons.push("Fits within your entry-level budget (under $45k drive-away)"); } }
+    else if (a.budget==='mid'){ if (ev.driveawayEst>70000) score-=150; else if (ev.driveawayEst<=45000){score+=20; reasons.push("Comfortably under your budget");} else {score+=30; reasons.push("A strong fit for your $45k–$70k budget");} }
+    else if (a.budget==='premium'){ if (ev.driveawayEst>100000) score-=150; else if (ev.driveawayEst>70000){score+=30; reasons.push("Sits right in your $70k–$100k budget");} else {score+=15; reasons.push("Well under your premium budget ceiling");} }
+    else if (a.budget==='unlimited'){ if (ev.driveawayEst>100000){score+=30; reasons.push("A flagship model matching your no-limit budget");} else {score+=15; reasons.push("Comfortably within your budget");} }
+
+    if (a.budgetType==='sacrifice'){ if (ev.isFBTExempt){ score+=30; reasons.push("FBT exempt — cuts your novated lease payments significantly"); } }
+
+    const towVal = getNumericTowingCapacity(ev.towingCapacity);
+    if (a.towNeed==='light'){ if (towVal>=500){score+=20; reasons.push("Rated to tow a trailer or small boat ("+ev.towingCapacity+")");} else dq=true; }
+    else if (a.towNeed==='heavy'){ if (towVal>=1500){score+=45; reasons.push("Heavy-tow rated for a caravan or boat ("+ev.towingCapacity+")");} else dq=true; }
+    if (dq) return null;
+
+    if (a.layout && a.layout.length>0){
+      let match=false;
+      a.layout.forEach(lay=>{
+        if (lay==="Small Hatch" && ev.bodyType==="Hatchback") match=true;
+        if (lay==="SUV" && ["Compact SUV","Medium SUV","Large SUV"].includes(ev.bodyType)) match=true;
+        if (lay==="Family Wagon" && ["Sedan","Medium SUV","Large SUV"].includes(ev.bodyType)) match=true;
+        if (lay==="Ute/Van" && ["Ute / Truck","Van","Large SUV"].includes(ev.bodyType)) match=true;
+      });
+      if (match){ score+=25; reasons.push("Matches the "+ev.bodyType.toLowerCase()+" shape you're after"); } else score-=150;
+    }
+
+    if (a.carRole==='primary'){
+      if (ev.rangeWLTP>=450){ score+=20; reasons.push("High range ("+ev.rangeWLTP+"km) suits it as your main car"); }
+      if (ev.fastChargeTimeMins<=28){ score+=15; reasons.push("Quick top-ups on long trips ("+ev.fastChargeTimeMins+" min fast-charge)"); }
+    } else if (a.carRole==='second'){
+      if (ev.driveawayEst<45000){ score+=20; reasons.push("Sized and priced right for a second/local car"); }
+      else if (ev.batteryCapacity<=52) score+=10;
+    }
+
+    if (a.trips && a.trips.includes("alpine")){
+      if (hasHeatPump(ev)){ score+=30; reasons.push("Has a heat pump — saves battery range in cold/snow conditions"); } else score-=20;
+    } else if (a.trips && a.trips.includes("highway")){
+      if (ev.rangeWLTP>=450){ score+=15; reasons.push("Strong range for regular highway driving"); }
+    }
+
+    if (a.parking!=='garage'){
+      if (ev.fastChargeTimeMins<=26){ score+=20; reasons.push("Fast public charging (under 26 min) suits street/apartment parking"); }
+    } else if (a.hasSolar){ score+=10; reasons.push("Great for daytime solar charging in your garage/driveway"); }
+
+    if (a.priorities && a.priorities.length>0){
+      a.priorities.forEach(pri=>{
+        if (pri==='range' && ev.rangeWLTP>=490){ score+=20; reasons.push("Elite driving range ("+ev.rangeWLTP+"km WLTP)"); }
+        if (pri==='charging' && ev.fastChargeTimeMins<=25){ score+=20; reasons.push("Class-leading fast-charge speed"); }
+        if (pri==='safety' && ["Volvo","Zeekr","Tesla","BMW"].includes(ev.brand)){ score+=20; reasons.push("Strong safety reputation for this brand"); }
+        if (pri==='performance' && (ev.drivetrain==="AWD" || ev.model.includes("Performance") || ev.model.includes("XPower"))){ score+=20; reasons.push("Quick, AWD-style performance"); }
+        if (pri==='cargo' && (["Large SUV","Medium SUV"].includes(ev.bodyType) || ev.seats>=5)){ score+=20; reasons.push("Spacious cargo/passenger room"); }
+        if (pri==='price' && ev.driveawayEst<=40000){ score+=20; reasons.push("One of the more affordable options on the market"); }
+      });
+    }
+
+    const rangeW = a.rangeWeight ?? 4;
+    if (ev.rangeWLTP>=480) score += (rangeW-3)*15; else if (ev.rangeWLTP<330) score -= (5-rangeW)*12;
+    const priceW = a.priceWeight ?? 3;
+    if (ev.driveawayEst<45000) score += (priceW-3)*18; else if (ev.driveawayEst>90000) score -= (priceW-3)*15;
+
+    return { ev, score: Math.min(100, Math.max(10, score)), reasons: Array.from(new Set(reasons)).slice(0,3) };
+  }).filter(x=>x!==null).sort((a,b)=>b.score-a.score);
+}
+
+const CATALOG = buildCatalog();
+/* ============================================================
+   SETTINGS (persisted per-trip-app, editable in a Settings screen)
+   ============================================================ */
+const SETTINGS_KEY = 'road_trip_settings_v1';
+const SETTINGS_DEFAULTS = {
+  publicDcRate: 0.65, overnightRate: 0.30, chargeCeiling: 90,
+  maxDailyKm: 600, petrolPrice: 2.05, petrolEconomy: 8.5, safetyBuffer: 15
+};
+function loadSettings(){
+  try{ const raw = localStorage.getItem(SETTINGS_KEY); if (raw) return Object.assign({}, SETTINGS_DEFAULTS, JSON.parse(raw)); }catch(e){}
+  return Object.assign({}, SETTINGS_DEFAULTS);
+}
+function saveSettings(s){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }catch(e){} }
+
+/* ---------- SAVED TRIPS — stores the form inputs, not the computed
+   itinerary, so loading a trip re-plans it fresh (picking up any live
+   charger data or settings changes since it was saved). */
+const SAVED_TRIPS_KEY = 'road_trip_saved_v1';
+function loadSavedTrips(){
+  try{ const raw = localStorage.getItem(SAVED_TRIPS_KEY); if (raw) return JSON.parse(raw); }catch(e){}
+  return [];
+}
+function persistSavedTrips(list){
+  try{ localStorage.setItem(SAVED_TRIPS_KEY, JSON.stringify(list)); return true; }
+  catch(e){ return false; }
+}
+function saveTripAs(name, form){
+  const list = loadSavedTrips();
+  const entry = { id:'saved-'+Date.now(), name, form: JSON.parse(JSON.stringify(form)), timestamp: new Date().toLocaleString('en-AU') };
+  const updated = [entry, ...list.filter(t=>t.name!==name)];
+  return persistSavedTrips(updated); // true/false — caller must check, don't assume success
+}
+function deleteSavedTrip(id){
+  persistSavedTrips(loadSavedTrips().filter(t=>t.id!==id));
+}
+
+let _idCounter = 1;
+function newId(){ return 'leg-' + (_idCounter++); }
+
+function addDays(dateStr, n){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+function formatDate(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short' });
+}
+
+/* ============================================================
+   ROUTE SEARCH — decides WHERE stops go (runs once per direction)
+   ============================================================ */
+async function autoRouteLegs(startName, endName, vehicle, startSoC, settings){
+  const start = findLocation(startName), end = findLocation(endName);
+  if (!start) return { error: `Couldn't find "${startName}" in the location list.` };
+  if (!end) return { error: `Couldn't find "${endName}" in the location list.` };
+  if (start.name === end.name) return { error: "Start and destination are the same place." };
+
+  const batteryCap = vehicle.batteryCapacity, whKm = vehicle.efficiencyWhKm;
+  const maxRange = (batteryCap*1000)/whKm;
+  const buffer = settings.safetyBuffer;
+
+  let current = { lat:start.lat, lng:start.lng, name:start.name };
+  let currentSoC = startSoC, dayDist = 0;
+  const legs = [];
+  const visited = new Set([start.name]);
+  let iterations = 0;
+
+  while (iterations++ < 40){
+    const distToDestFromCurrent = calculateDrivingDistance(current, end);
+    const usableRangeNow = Math.max(0, ((currentSoC - buffer)/100) * maxRange);
+    if (distToDestFromCurrent <= 5) break;
+
+    if (usableRangeNow >= distToDestFromCurrent && (dayDist + distToDestFromCurrent) <= settings.maxDailyKm + 80){
+      legs.push({ id:newId(), kind:'destination', from:{name:current.name,lat:current.lat,lng:current.lng}, to:{name:end.name,lat:end.lat,lng:end.lng}, distanceKm: distToDestFromCurrent });
+      break;
+    }
+    const dailyBudget = Math.max(0, settings.maxDailyKm - dayDist);
+    const overnightTrigger = dailyBudget < usableRangeNow && dailyBudget < distToDestFromCurrent;
+    const targetDist = overnightTrigger ? dailyBudget : Math.min(usableRangeNow, distToDestFromCurrent - 5);
+
+    let best = null, bestScore = Infinity;
+    for (const [tName, tLoc] of Object.entries(NATIONAL_LOCATIONS)){
+      if (visited.has(tName)) continue;
+      const distFromCurrent = calculateDrivingDistance(current, tLoc);
+      const distTownToDest = calculateDrivingDistance(tLoc, end);
+      const cap = Math.min(usableRangeNow, dailyBudget || usableRangeNow);
+      if (distFromCurrent < 15 || distFromCurrent > cap) continue;
+      const detour = (distFromCurrent + distTownToDest) - distToDestFromCurrent;
+      if (detour > 70) continue;
+      if (distTownToDest >= distToDestFromCurrent) continue;
+      const score = Math.abs(distFromCurrent - targetDist) + detour*0.7;
+      if (score < bestScore){ bestScore = score; best = { name:tName, lat:tLoc.lat, lng:tLoc.lng, distFromCurrent }; }
+    }
+    let nextStop;
+    if (best){ nextStop = best; }
+    else {
+      const frac = Math.min(0.9, targetDist / Math.max(distToDestFromCurrent,1));
+      nextStop = { name:"Unverified stop (no real charger confirmed nearby)", lat: current.lat+(end.lat-current.lat)*frac,
+        lng: current.lng+(end.lng-current.lng)*frac, distFromCurrent: Math.round(targetDist) };
+    }
+
+    // Try to find a real charger near this candidate point. A real charger a
+    // little further away is always better than an invented stop at a town
+    // that doesn't actually have one (Rule 13) — but it must still be
+    // reachable (Rule 1) and make forward progress, not backtrack (Rule 8).
+    let chargerMeta = { isLive:false };
+    const found = await findNearbyCharger(nextStop.lat, nextStop.lng);
+    if (found){
+      const realDist = calculateDrivingDistance(current, found);
+      const realProgress = calculateDrivingDistance(found, end);
+      const reachable = realDist <= usableRangeNow;
+      const makesProgress = realProgress < distToDestFromCurrent;
+      if (reachable && makesProgress){
+        chargerMeta = { isLive:true, operator:found.operator, connectionType:found.connectionType, powerKw:found.powerKw, bays:found.bays, usageCost:found.usageCost, lastUpdated:found.lastUpdated };
+        nextStop = { name: found.name, lat: found.lat, lng: found.lng, distFromCurrent: realDist };
+      }
+      // else: the nearest real charger we found is out of safe reach or backtracks —
+      // keep the unverified placeholder rather than risk stranding the trip.
+    }
+
+    const socConsumed = (nextStop.distFromCurrent*whKm/1000)/batteryCap*100;
+    currentSoC = Math.max(0, currentSoC - socConsumed);
+
+    if (overnightTrigger){
+      legs.push({ id:newId(), kind:'overnight', from:{name:current.name,lat:current.lat,lng:current.lng}, to:{name:nextStop.name,lat:nextStop.lat,lng:nextStop.lng},
+        distanceKm: nextStop.distFromCurrent, chargerAtAccommodation:true, targetSoC:100, chargerMeta });
+      currentSoC = 100; dayDist = 0;
+    } else {
+      legs.push({ id:newId(), kind:'charge', from:{name:current.name,lat:current.lat,lng:current.lng}, to:{name:nextStop.name,lat:nextStop.lat,lng:nextStop.lng},
+        distanceKm: nextStop.distFromCurrent, targetSoC: settings.chargeCeiling, chargerMeta });
+      currentSoC = Math.max(currentSoC, settings.chargeCeiling); dayDist += nextStop.distFromCurrent;
+    }
+    current = { lat: nextStop.lat, lng: nextStop.lng, name: nextStop.name };
+    visited.add(nextStop.name);
+  }
+  return { legs };
+}
+
+/* ============================================================
+   RECOMPUTE — walks the (possibly hand-edited) itinerary and
+   fills in every day/date/SoC/cost/warning field from scratch.
+   This is what re-runs after any manual edit.
+   ============================================================ */
+function recompute(itinerary, vehicle, settings, startSoC, startDate){
+  const batteryCap = vehicle.batteryCapacity, whKm = vehicle.efficiencyWhKm;
+  let currentSoC = startSoC, day = 1, date = startDate;
+
+  itinerary.forEach(leg=>{
+    leg.day = day; leg.date = date;
+
+    if (leg.kind === 'stay'){
+      leg.departSoC = Math.round(currentSoC);
+      if (leg.chargerAtAccommodation !== false){
+        const target = leg.targetSoC || 100;
+        const energyAdded = Math.max(0, (target-currentSoC)/100*batteryCap);
+        leg.energyAdded = energyAdded; leg.cost = energyAdded*settings.overnightRate;
+        currentSoC = Math.max(currentSoC, target);
+      } else { leg.energyAdded = 0; leg.cost = 0; }
+      leg.arrivalSoC = Math.round(currentSoC);
+      day += leg.nights; date = addDays(date, leg.nights);
+      return;
+    }
+
+    const energyUsed = leg.distanceKm*whKm/1000;
+    const socUsed = (energyUsed/batteryCap)*100;
+    const arrivalSoC = currentSoC - socUsed;
+    leg.departSoC = Math.round(currentSoC);
+    leg.arrivalSoC = Math.round(Math.max(0, arrivalSoC));
+    leg.warning = arrivalSoC < 5;
+    currentSoC = Math.max(0, arrivalSoC);
+
+    if (leg.kind === 'charge'){
+      const target = leg.targetSoC || settings.chargeCeiling;
+      const energyAdded = Math.max(0, (target-currentSoC)/100*batteryCap);
+      leg.energyAdded = energyAdded; leg.cost = energyAdded*settings.publicDcRate;
+      leg.timeMins = Math.round((energyAdded/100)*60) + 15;
+      currentSoC = Math.max(currentSoC, target);
+    } else if (leg.kind === 'overnight'){
+      if (leg.chargerAtAccommodation !== false){
+        const target = leg.targetSoC || 100;
+        const energyAdded = Math.max(0, (target-currentSoC)/100*batteryCap);
+        leg.energyAdded = energyAdded; leg.cost = energyAdded*settings.overnightRate;
+        currentSoC = Math.max(currentSoC, target);
+      } else { leg.energyAdded = 0; leg.cost = 0; }
+      const nights = leg.nights || 1;
+      day += nights; date = addDays(date, nights);
+    } else if (leg.kind === 'sidetrip'){
+      // position unchanged, no day change
+    } else if (leg.kind === 'destination' || leg.kind === 'waypoint'){
+      // arrival at a nominated stop or the final destination — no charging action
+    }
+  });
+  return itinerary;
+}
+
+async function planSegmentChain(stopNames, waypointMeta, vehicle, firstStartSoC, settings){
+  // stopNames: ordered list of location names, e.g. [from, wp1, wp2, ..., to]
+  // waypointMeta: array aligned to the IN-BETWEEN stops only (length = stopNames.length - 2),
+  // each { type:'stop'|'overnight', nights } — describes what happens at that intermediate stop.
+  let itinerary = [];
+  let segmentStartSoC = firstStartSoC;
+
+  for (let i=0; i<stopNames.length-1; i++){
+    const segOut = await autoRouteLegs(stopNames[i], stopNames[i+1], vehicle, segmentStartSoC, settings);
+    if (segOut.error) return { error: segOut.error };
+    let segLegs = segOut.legs;
+
+    const isFinalSegment = (i === stopNames.length-2);
+    if (!isFinalSegment && segLegs.length){
+      // The last leg of a non-final segment arrives at a nominated waypoint —
+      // relabel it according to what the user asked for there.
+      const meta = waypointMeta[i] || { type:'stop' };
+      const lastLeg = segLegs[segLegs.length-1];
+      if (lastLeg.kind === 'destination'){
+        if (meta.type === 'overnight'){
+          lastLeg.kind = 'overnight';
+          lastLeg.chargerAtAccommodation = true;
+          lastLeg.targetSoC = 100;
+          lastLeg.nights = meta.nights || 1;
+          lastLeg.chargerMeta = undefined; // user-chosen stop, not an auto-search pick
+        } else {
+          lastLeg.kind = 'waypoint'; // pass-through preferred stop, no auto-charging
+          lastLeg.chargerMeta = undefined;
+        }
+      }
+      segmentStartSoC = (meta.type === 'overnight') ? 100 : 90; // best-guess for placing the NEXT segment's stops
+    }
+    itinerary = itinerary.concat(segLegs);
+  }
+  return { itinerary };
+}
+
+/* ---------- SIDE TRIPS — nominated before planning, anchored to a named
+   point (start, a waypoint, or the destination), same concept as the full
+   app's sideTrips array. Applied after the main route is built. */
+function applySideTrips(itinerary, sideTrips){
+  (sideTrips || []).forEach(st => {
+    if (!st.location) return;
+    let anchorIdx = -1;
+    for (let i=itinerary.length-1; i>=0; i--){
+      if (itinerary[i].to && itinerary[i].to.name && itinerary[i].to.name.toLowerCase() === st.fromPoint.toLowerCase()){ anchorIdx = i; break; }
+    }
+    // Special case: the anchor is the very start of the trip, which is never
+    // a leg's arrival point (only ever a departure) — insert before leg 0 instead.
+    const isStartAnchor = anchorIdx === -1 && itinerary.length && itinerary[0].from && itinerary[0].from.name.toLowerCase() === st.fromPoint.toLowerCase();
+    if (anchorIdx === -1 && !isStartAnchor) return; // anchor not found (typo or point removed) — skip quietly
+    const insertAt = isStartAnchor ? 0 : anchorIdx+1;
+    const destLoc = findLocation(st.location); // may be null if it's not a gazetteer town — that's fine, just no map coords
+    const destPoint = { name: st.location, lat: destLoc ? destLoc.lat : undefined, lng: destLoc ? destLoc.lng : undefined };
+
+    if (st.purpose === 'overnight'){
+      const out = { id:newId(), kind:'waypoint', from:{name:st.fromPoint}, to:destPoint, distanceKm: st.oneWayKm };
+      const stay = { id:newId(), kind:'overnight', from:destPoint, to:destPoint, distanceKm:0,
+        chargerAtAccommodation:true, targetSoC:100, nights: st.nights||1 };
+      const back = { id:newId(), kind:'waypoint', from:destPoint, to:{name:st.fromPoint}, distanceKm: st.oneWayKm };
+      itinerary.splice(insertAt, 0, out, stay, back);
+    } else {
+      const side = { id:newId(), kind:'sidetrip', from:{name:st.fromPoint}, to:{name:st.fromPoint},
+        distanceKm: st.oneWayKm*2, note: `Side trip to ${st.location}` };
+      itinerary.splice(insertAt, 0, side);
+    }
+  });
+  return itinerary;
+}
+
+async function buildItinerary(form, vehicle, settings){
+  const waypoints = form.waypoints || [];
+  const outboundStops = [form.fromLoc, ...waypoints.map(w=>w.location), form.toLoc];
+  const outboundMeta = waypoints.map(w=>({ type:w.type, nights:w.nights }));
+
+  const outResult = await planSegmentChain(outboundStops, outboundMeta, vehicle, form.startSoC, settings);
+  if (outResult.error) return { error: outResult.error };
+  let itinerary = outResult.itinerary;
+
+  if (form.roundTrip){
+    const nights = form.nights || 0;
+    let returnSearchStartSoC = 100;
+    if (nights > 0){
+      const dest = findLocation(form.toLoc);
+      itinerary.push({ id:newId(), kind:'stay', from:{name:dest.name}, to:{name:dest.name},
+        distanceKm:0, nights, chargerAtAccommodation:true, targetSoC:100 });
+    } else {
+      // Day trip — no overnight, so don't assume a full recharge at the
+      // destination. Estimate the real arrival battery level by recomputing
+      // the outbound leg alone, so the return search starts from a realistic
+      // point instead of pretending you slept and woke up at 100%.
+      const tempItinerary = itinerary.map(l=>({...l}));
+      recompute(tempItinerary, vehicle, settings, form.startSoC, form.startDate);
+      const lastLeg = tempItinerary[tempItinerary.length-1];
+      returnSearchStartSoC = lastLeg ? lastLeg.arrivalSoC : form.startSoC;
+    }
+    const ret = await autoRouteLegs(form.toLoc, form.fromLoc, vehicle, returnSearchStartSoC, settings);
+    if (ret.error) return { error: ret.error };
+    itinerary = itinerary.concat(ret.legs);
+  }
+  itinerary = applySideTrips(itinerary, form.sideTrips);
+  recompute(itinerary, vehicle, settings, form.startSoC, form.startDate);
+  return { itinerary };
+}
+
+/* ---------- Edit operations ---------- */
+function insertStop(itinerary, legId, kind, distanceIntoLeg, targetSoC, note, chargerInfo){
+  const idx = itinerary.findIndex(l=>l.id===legId);
+  if (idx===-1) return itinerary;
+  const orig = itinerary[idx];
+  if (kind === 'sidetrip'){
+    const sideLeg = { id:newId(), kind:'sidetrip', from:{name:orig.to.name}, to:{name:orig.to.name},
+      distanceKm: distanceIntoLeg*2, note: note||'Side trip' };
+    itinerary.splice(idx+1, 0, sideLeg);
+    return itinerary;
+  }
+  const splitName = chargerInfo ? chargerInfo.name : (note && note.trim() ? note.trim() : `Stop near ${orig.from.name}`);
+  const splitCoords = chargerInfo ? { lat:chargerInfo.lat, lng:chargerInfo.lng } : {};
+  const chargerMeta = chargerInfo ? { isLive:true, operator:chargerInfo.operator, connectionType:chargerInfo.connectionType, powerKw:chargerInfo.powerKw, bays:chargerInfo.bays, usageCost:chargerInfo.usageCost, lastUpdated:chargerInfo.lastUpdated } : undefined;
+  const first = { id:newId(), kind: kind, from: orig.from, to: { name: splitName, ...splitCoords },
+    distanceKm: distanceIntoLeg, targetSoC: targetSoC, chargerAtAccommodation: kind==='overnight' ? true : undefined,
+    chargerMeta };
+  const second = { ...orig, id:newId(), from: { name: splitName, ...splitCoords }, distanceKm: Math.max(1, orig.distanceKm - distanceIntoLeg) };
+  itinerary.splice(idx, 1, first, second);
+  return itinerary;
+}
+function removeStop(itinerary, legId){
+  const idx = itinerary.findIndex(l=>l.id===legId);
+  if (idx===-1) return itinerary;
+  const leg = itinerary[idx];
+  if (leg.kind === 'sidetrip' || leg.kind === 'stay'){
+    itinerary.splice(idx,1);
+    return itinerary;
+  }
+  let nextIdx = idx+1;
+  while (nextIdx < itinerary.length && itinerary[nextIdx].kind === 'sidetrip') nextIdx++;
+  if (nextIdx >= itinerary.length){ itinerary.splice(idx,1); return itinerary; }
+  const next = itinerary[nextIdx];
+  const merged = { ...next, id:newId(), from: leg.from, distanceKm: leg.distanceKm + next.distanceKm };
+  for (let i=idx+1; i<nextIdx; i++){
+    itinerary[i].from = { name: leg.from.name };
+    itinerary[i].to = { name: leg.from.name };
+  }
+  itinerary.splice(nextIdx, 1, merged);
+  itinerary.splice(idx, 1);
+  return itinerary;
+}
+
+/* ============================================================
+   APP STATE
+   ============================================================ */
+const STORAGE_KEY = 'ev_hub_state_v1';
+function loadHubState(){
+  try{ const raw = localStorage.getItem(STORAGE_KEY); if (raw) return JSON.parse(raw); }catch(e){}
+  return { shortlist: [] };
+}
+function saveLastTrip(trip){ try{ localStorage.setItem('ev_hub_last_trip_v1', JSON.stringify(trip)); }catch(e){} }
+
+const hubState = loadHubState();
+const App = {
+  screen: 'form',
+  prevScreen: 'form',
+  settings: loadSettings(),
+  form: { fromLoc:'', toLoc:'', vehicleId:null, startSoC:100, roundTrip:false, nights:0, startDate: new Date().toISOString().slice(0,10), waypoints:[], sideTrips:[] },
+  itinerary: null,
+  vehicle: null,
+  addStopOpenFor: null, // legId currently showing the inline "add a stop" form
+  waypointFormOpen: false,
+  showSaveForm: false,
+  sideTripFormOpen: false,
+  viewingDay: null, // when set, results screen shows just that day's detail
+};
+
+const root = document.getElementById('root');
+const crumbEl = document.getElementById('crumbEl');
+document.getElementById('settingsBtn').addEventListener('click', ()=>{ App.prevScreen = App.screen; App.screen='settings'; render(); });
+document.getElementById('savedTripsBtn').addEventListener('click', ()=>{ App.prevScreen = App.screen; App.screen='savedTrips'; render(); });
+
+function money(n){ return '$' + (Math.round(n*100)/100).toLocaleString('en-AU'); }
+
+function drawTripMap(itinerary){
+  const el = document.getElementById('tripMap');
+  if (!el) return;
+
+  const points = [];
+  itinerary.forEach(l=>{
+    if (l.from && l.from.lat && l.from.lng) points.push({ name:l.from.name, lat:l.from.lat, lng:l.from.lng });
+    if (l.kind!=='sidetrip' && l.kind!=='stay' && l.to && l.to.lat && l.to.lng) points.push({ name:l.to.name, lat:l.to.lat, lng:l.to.lng, kind:l.kind });
+  });
+  el.classList.add('schematic');
+  if (!points.length){
+    el.innerHTML = '<div style="padding:20px;font-size:13px;color:var(--ink-soft);text-align:center;">No mappable stops in this itinerary yet.</div>';
+    return;
+  }
+  drawSchematicMap(el, points);
+}
+
+function drawSchematicMap(el, points){
+  el.classList.add('schematic');
+  const W = 340, H = 260, PAD = 30;
+  const lats = points.map(p=>p.lat), lngs = points.map(p=>p.lng);
+  const minLat=Math.min(...lats), maxLat=Math.max(...lats), minLng=Math.min(...lngs), maxLng=Math.max(...lngs);
+  const latRange = Math.max(maxLat-minLat, 0.3), lngRange = Math.max(maxLng-minLng, 0.3);
+  function project(p){
+    const x = PAD + ((p.lng-minLng)/lngRange) * (W-2*PAD);
+    const y = PAD + (1-(p.lat-minLat)/latRange) * (H-2*PAD);
+    return [x,y];
+  }
+  const coords = points.map(project);
+  const pathD = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+' '+c[1].toFixed(1)).join(' ');
+  const dots = points.map((p,i)=>{
+    const [x,y] = coords[i];
+    const isEndpoint = i===0 || i===points.length-1;
+    const r = isEndpoint ? 6 : 4.5;
+    const fill = isEndpoint ? '#E0A93B' : '#2F5D45';
+    const labelY = y > H/2 ? y+16 : y-10;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="#fff" stroke-width="2"/>
+      <text x="${x}" y="${labelY}" font-size="9" text-anchor="middle" fill="#4B5A47" font-family="Segoe UI, sans-serif">${escapeXml(p.name.length>16?p.name.slice(0,15)+'…':p.name)}</text>`;
+  }).join('');
+  el.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;">
+      <path d="${pathD}" fill="none" stroke="#2F5D45" stroke-width="2.5" opacity="0.75"/>
+      ${dots}
+    </svg>
+    <div style="text-align:center;font-size:11px;color:var(--ink-soft);margin-top:4px;">Schematic route diagram. Use "Open in Google Maps" below for real navigation.</div>
+  `;
+}
+function escapeXml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
+function vehicleOptionsHTML(){ return CATALOG.map(ev=>`<option value="${ev.brand} ${ev.model} ${ev.trim}" data-id="${ev.id}">`).join(''); }
+function findVehicleByLabel(label){ return CATALOG.find(ev => `${ev.brand} ${ev.model} ${ev.trim}`.toLowerCase() === (label||'').toLowerCase()); }
+function locationOptionsHTML(){ return Object.keys(NATIONAL_LOCATIONS).map(name=>`<option value="${name}">`).join(''); }
+
+function render(){
+  crumbEl.textContent = App.screen==='settings' ? 'Settings' : App.screen==='savedTrips' ? 'Saved Trips' : App.viewingDay ? `Day ${App.viewingDay}` : 'Road Trip Planner';
+  if (App.screen === 'form') return renderForm();
+  if (App.screen === 'settings') return renderSettings();
+  if (App.screen === 'loading') return renderLoading();
+  if (App.screen === 'savedTrips') return renderSavedTrips();
+  if (App.viewingDay) return renderDayDetail();
+  return renderResults();
+}
+
+function renderSavedTrips(){
+  const list = loadSavedTrips();
+  root.innerHTML = `
+    <h1 class="home-title">Saved trips</h1>
+    <div class="home-sub">Loading a saved trip re-plans it fresh, so it picks up any current charger or price changes.</div>
+    ${list.length ? list.map(t=>`
+      <div class="shortlist-item" style="align-items:flex-start;">
+        <div>
+          <div class="si-name">${t.name}</div>
+          <div class="si-sub">${t.form.fromLoc} → ${t.form.toLoc}${t.form.roundTrip?' (return)':''} · saved ${t.timestamp}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+          <button class="text-link" data-load="${t.id}">Load</button>
+          <button class="remove-btn" data-delete="${t.id}">Delete</button>
+        </div>
+      </div>
+    `).join('') : `<div class="empty-state">No saved trips yet. Plan a trip, then tap "Save this trip" on the results screen.</div>`}
+    <button class="restart" id="backBtn" style="margin-top:16px;">Back</button>
+  `;
+  document.getElementById('backBtn').addEventListener('click', ()=>{ App.screen = App.prevScreen==='savedTrips' ? 'form' : App.prevScreen; render(); });
+  root.querySelectorAll('[data-load]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const trip = list.find(t=>t.id===btn.dataset.load);
+      App.form = JSON.parse(JSON.stringify(trip.form));
+      await handlePlan();
+    });
+  });
+  root.querySelectorAll('[data-delete]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ deleteSavedTrip(btn.dataset.delete); renderSavedTrips(); });
+  });
+}
+
+function renderLoading(){
+  root.innerHTML = `
+    <div class="card" style="text-align:center;padding:50px 20px;">
+      <div class="q-title" style="margin-bottom:8px;">Checking for real chargers along your route…</div>
+      <div class="q-help">Looking up OpenChargeMap near each stop. If you're offline, we'll use an estimated stop instead.</div>
+    </div>
+  `;
+}
+
+/* ---------- FORM ---------- */
+function renderForm(){
+  const sl = hubState.shortlist || [];
+  const shortlistPills = sl.length ? `
+    <div class="field-block">
+      <div class="q-title">From your shortlist</div>
+      <div class="shortlist-pills">
+        ${sl.map(v=>`<button class="pill ${App.form.vehicleId===v.id?'selected':''}" data-id="${v.id}">${v.brand} ${v.model}</button>`).join('')}
+      </div>
+    </div>` : '';
+
+  root.innerHTML = `
+    <h1 class="home-title">Plan a road trip</h1>
+    <div class="home-sub">We'll work out charging stops leg by leg — you can adjust every part of it afterwards.</div>
+    <div class="card">
+      <div class="field-block">
+        <div class="q-title">Starting from</div>
+        <input type="text" id="fromInput" list="locList" placeholder="e.g. Melbourne" value="${App.form.fromLoc}">
+      </div>
+      <div class="field-block">
+        <div class="q-title">Heading to</div>
+        <input type="text" id="toInput" list="locList" placeholder="e.g. Sydney" value="${App.form.toLoc}">
+      </div>
+      <datalist id="locList">${locationOptionsHTML()}</datalist>
+
+      <div class="field-block">
+        <div class="q-title">Stops along the way</div>
+        <div class="q-help">Add any towns you want to visit on purpose — either a short stop or an overnight stay. We'll work out charging around them.</div>
+        ${App.form.waypoints.length ? App.form.waypoints.map((w,i)=>`
+          <div class="shortlist-item" style="margin-bottom:8px;">
+            <div>
+              <div class="si-name">${i+1}. ${w.location}</div>
+              <div class="si-sub">${w.type==='overnight' ? `Overnight — ${w.nights} night${w.nights>1?'s':''}` : 'Short stop'}</div>
+            </div>
+            <button class="remove-btn" data-wpremove="${w.id}">Remove</button>
+          </div>
+        `).join('') : ''}
+        ${App.waypointFormOpen ? waypointFormHTML() : `<button class="restart" id="addWaypointBtn" style="margin-top:4px;">+ Add a stop along the way</button>`}
+      </div>
+
+      <div class="field-block">
+        <div class="q-title">Side trips</div>
+        <div class="q-help">A detour off your route — out to somewhere and back, either the same day or with a night away.</div>
+        ${App.form.sideTrips.length ? App.form.sideTrips.map((st,i)=>`
+          <div class="shortlist-item" style="margin-bottom:8px;">
+            <div>
+              <div class="si-name">${st.location}</div>
+              <div class="si-sub">From ${st.fromPoint} · ${st.oneWayKm}km one-way · ${st.purpose==='overnight' ? `overnight, ${st.nights} night${st.nights>1?'s':''}` : 'back same day'}</div>
+            </div>
+            <button class="remove-btn" data-stremove="${st.id}">Remove</button>
+          </div>
+        `).join('') : ''}
+        ${App.sideTripFormOpen ? sideTripFormHTML() : `<button class="restart" id="addSideTripBtn" style="margin-top:4px;">+ Add a side trip</button>`}
+      </div>
+
+      ${shortlistPills}
+
+      <div class="field-block">
+        <div class="q-title">Which car?</div>
+        <div class="q-help">Search any of the 127 current models.</div>
+        <input type="text" id="vehicleInput" list="vehicleList" placeholder="e.g. Tesla Model 3 RWD" value="${App.form.vehicleLabel||''}">
+        <datalist id="vehicleList">${vehicleOptionsHTML()}</datalist>
+      </div>
+
+      <div class="field-block">
+        <div class="q-title">When are you leaving?</div>
+        <input type="date" id="dateInput" value="${App.form.startDate}">
+      </div>
+
+      <div class="field-block">
+        <div class="q-title">How full will your battery be at the start?</div>
+        <div class="options" id="socOpts">
+          ${[["Full (100%)",100],["Mostly full (90%)",90],["About half (50%)",50]].map(([l,v])=>`<button class="opt ${App.form.startSoC===v?'selected':''}" data-val="${v}">${l}</button>`).join('')}
+        </div>
+      </div>
+
+      <div class="field-block">
+        <div class="toggle-row">
+          <span class="q-title" style="margin:0;">Is this a there-and-back trip?</span>
+          <label class="switch"><input type="checkbox" id="roundTripToggle" ${App.form.roundTrip?'checked':''}><span class="slider"></span></label>
+        </div>
+        ${App.form.roundTrip ? `
+          <div style="margin-top:10px;">
+            <label style="font-size:13px;color:var(--ink-soft);">How many nights away? (0 for a same-day trip)</label>
+            <input type="number" id="nightsInput" min="0" max="60" value="${App.form.nights}" class="small-number">
+          </div>` : ''}
+      </div>
+
+      <button class="btn btn-primary" id="planBtn" style="margin-top:6px;">Plan my trip</button>
+    </div>
+    <div class="footnote">Stops are placed at the best-positioned town along your route from a list of 484 Australian towns. Rates and daily-drive limits are in ⚙️ Settings.</div>
+  `;
+
+  document.getElementById('fromInput').addEventListener('input', e=> App.form.fromLoc = e.target.value);
+  document.getElementById('toInput').addEventListener('input', e=> App.form.toLoc = e.target.value);
+  document.getElementById('dateInput').addEventListener('input', e=> App.form.startDate = e.target.value);
+  document.getElementById('vehicleInput').addEventListener('input', e=>{
+    App.form.vehicleLabel = e.target.value;
+    const match = findVehicleByLabel(e.target.value);
+    App.form.vehicleId = match ? match.id : null;
+  });
+  document.getElementById('roundTripToggle').addEventListener('change', e=>{ App.form.roundTrip = e.target.checked; renderForm(); });
+  const nightsInput = document.getElementById('nightsInput');
+  if (nightsInput) nightsInput.addEventListener('input', e=> App.form.nights = e.target.value === '' ? 0 : parseInt(e.target.value));
+  root.querySelectorAll('#socOpts .opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ App.form.startSoC = parseInt(btn.dataset.val); renderForm(); });
+  });
+  root.querySelectorAll('.pill').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = sl.find(x=>x.id===btn.dataset.id);
+      App.form.vehicleId = v.id; App.form.vehicleLabel = `${v.brand} ${v.model} ${v.trim}`;
+      renderForm();
+    });
+  });
+  document.getElementById('planBtn').addEventListener('click', handlePlan);
+
+  const addWpBtn = document.getElementById('addWaypointBtn');
+  if (addWpBtn) addWpBtn.addEventListener('click', ()=>{ App.waypointFormOpen = true; renderForm(); });
+  root.querySelectorAll('[data-wpremove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      App.form.waypoints = App.form.waypoints.filter(w=>w.id!==btn.dataset.wpremove);
+      renderForm();
+    });
+  });
+  if (App.waypointFormOpen) wireWaypointForm();
+
+  const addStBtn = document.getElementById('addSideTripBtn');
+  if (addStBtn) addStBtn.addEventListener('click', ()=>{
+    if (!App.form.fromLoc){ alert("Please fill in your starting point first, so there's somewhere for the side trip to branch from."); return; }
+    App.sideTripFormOpen = true; renderForm();
+  });
+  root.querySelectorAll('[data-stremove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      App.form.sideTrips = App.form.sideTrips.filter(st=>st.id!==btn.dataset.stremove);
+      renderForm();
+    });
+  });
+  if (App.sideTripFormOpen) wireSideTripForm();
+}
+
+function sideTripFormHTML(){
+  return `
+    <div class="inline-form">
+      <div class="q-title" style="font-size:14px;">Add a side trip</div>
+      <label>Where does it branch off the route?</label>
+      <input type="text" id="stFromPoint" list="locList" placeholder="e.g. Ballarat">
+      <div class="hint" style="margin:-2px 0 6px;">If this isn't already one of your stops, we'll add it as a quick stop on your route first — a side trip needs somewhere on the path to branch from.</div>
+      <label>Go to</label>
+      <input type="text" id="stLocation" list="locList" placeholder="e.g. Grampians, or any place name">
+      <label>One-way distance (km)</label>
+      <input type="number" id="stOneWayKm" value="30">
+      <div class="hint" id="stDistHint" style="margin-top:-2px;">Enter this yourself if it's not a listed town — we can only calculate it automatically for places in our list of 484 towns.</div>
+      <label>Kind of side trip</label>
+      <select id="stPurpose">
+        <option value="short">Just visiting — back the same day</option>
+        <option value="overnight">Staying overnight there</option>
+      </select>
+      <div id="stNightsRow" style="display:none;">
+        <label>How many nights?</label>
+        <input type="number" id="stNights" min="1" max="30" value="1">
+      </div>
+      <div class="form-actions">
+        <button class="cancel-btn" id="stCancelBtn">Cancel</button>
+        <button class="save-btn" id="stSaveBtn">Add side trip</button>
+      </div>
+    </div>
+  `;
+}
+
+function sortWaypointsByRoute(form){
+  const start = findLocation(form.fromLoc);
+  if (!start) return;
+  form.waypoints.sort((a,b)=>{
+    const da = calculateDrivingDistance(start, findLocation(a.location) || start);
+    const db = calculateDrivingDistance(start, findLocation(b.location) || start);
+    return da - db;
+  });
+}
+
+function wireSideTripForm(){
+  const purposeSelect = document.getElementById('stPurpose');
+  const nightsRow = document.getElementById('stNightsRow');
+  const fromInput = document.getElementById('stFromPoint');
+  const toInput = document.getElementById('stLocation');
+  const distInput = document.getElementById('stOneWayKm');
+  const distHint = document.getElementById('stDistHint');
+  let distManuallyEdited = false;
+
+  function tryAutoCalc(){
+    const fromLoc = findLocation(fromInput.value.trim());
+    const toLoc = findLocation(toInput.value.trim());
+    if (fromLoc && toLoc && !distManuallyEdited){
+      const d = calculateDrivingDistance(fromLoc, toLoc);
+      distInput.value = d;
+      distHint.textContent = `Calculated from the gazetteer: ${fromLoc.name} to ${toLoc.name} is ${d}km one-way.`;
+    } else if (fromLoc && toInput.value.trim() && !toLoc){
+      distHint.textContent = `"${toInput.value.trim()}" isn't in our list of towns — enter the one-way distance yourself.`;
+    }
+  }
+  fromInput.addEventListener('input', tryAutoCalc);
+  toInput.addEventListener('input', tryAutoCalc);
+  distInput.addEventListener('input', ()=>{ distManuallyEdited = true; });
+
+  purposeSelect.addEventListener('change', ()=>{ nightsRow.style.display = purposeSelect.value==='overnight' ? 'block' : 'none'; });
+  document.getElementById('stCancelBtn').addEventListener('click', ()=>{ App.sideTripFormOpen=false; renderForm(); });
+  document.getElementById('stSaveBtn').addEventListener('click', ()=>{
+    const location = document.getElementById('stLocation').value.trim();
+    if (!location){ alert("Please enter where the side trip goes."); return; }
+    const fromPointRaw = document.getElementById('stFromPoint').value.trim();
+    if (!fromPointRaw){ alert("Please enter where along your route this branches off."); return; }
+    const resolved = findLocation(fromPointRaw);
+    if (!resolved){ alert(`Couldn't find "${fromPointRaw}" — try a well-known nearby town.`); return; }
+    const fromPoint = resolved.name;
+
+    const existingPoints = [App.form.fromLoc, App.form.toLoc, ...App.form.waypoints.map(w=>w.location)].map(p=>p.toLowerCase());
+    if (!existingPoints.includes(fromPoint.toLowerCase())){
+      App.form.waypoints.push({ id:newId(), location: fromPoint, type:'stop', nights:1 });
+      sortWaypointsByRoute(App.form);
+    }
+
+    const oneWayKm = parseFloat(document.getElementById('stOneWayKm').value) || 20;
+    const purpose = purposeSelect.value;
+    const nights = parseInt(document.getElementById('stNights').value) || 1;
+    App.form.sideTrips.push({ id:newId(), fromPoint, location, oneWayKm, purpose, nights });
+    App.sideTripFormOpen = false;
+    renderForm();
+  });
+}
+
+function waypointFormHTML(){
+  return `
+    <div class="inline-form">
+      <div class="q-title" style="font-size:14px;">Add a stop along the way</div>
+      <label>Where?</label>
+      <input type="text" id="wpLocation" list="locList" placeholder="e.g. Euroa">
+      <label>What kind of stop?</label>
+      <select id="wpType">
+        <option value="stop">Just a short stop — keep driving the same day</option>
+        <option value="overnight">Overnight stay here</option>
+      </select>
+      <div id="wpNightsRow" style="display:none;">
+        <label>How many nights?</label>
+        <input type="number" id="wpNights" min="1" max="30" value="1">
+      </div>
+      <div class="form-actions">
+        <button class="cancel-btn" id="wpCancelBtn">Cancel</button>
+        <button class="save-btn" id="wpSaveBtn">Add stop</button>
+      </div>
+    </div>
+  `;
+}
+
+function wireWaypointForm(){
+  const typeSelect = document.getElementById('wpType');
+  const nightsRow = document.getElementById('wpNightsRow');
+  typeSelect.addEventListener('change', ()=>{ nightsRow.style.display = typeSelect.value==='overnight' ? 'block' : 'none'; });
+  document.getElementById('wpCancelBtn').addEventListener('click', ()=>{ App.waypointFormOpen = false; renderForm(); });
+  document.getElementById('wpSaveBtn').addEventListener('click', ()=>{
+    const location = document.getElementById('wpLocation').value.trim();
+    if (!location){ alert("Please enter a place name."); return; }
+    if (!findLocation(location)){ alert(`Couldn't find "${location}" in the location list — try a well-known nearby town.`); return; }
+    const type = typeSelect.value;
+    const nights = parseInt(document.getElementById('wpNights').value) || 1;
+    App.form.waypoints.push({ id:newId(), location, type, nights });
+    sortWaypointsByRoute(App.form);
+    App.waypointFormOpen = false;
+    renderForm();
+  });
+}
+
+async function handlePlan(){
+  const vehicle = CATALOG.find(ev=>ev.id===App.form.vehicleId) || findVehicleByLabel(App.form.vehicleLabel);
+  if (!App.form.fromLoc || !App.form.toLoc){ alert("Please enter a starting point and a destination."); return; }
+  if (!vehicle){ alert("Please choose a car from the list (start typing a brand or model)."); return; }
+
+  App.viewingDay = null;
+  App.screen = 'loading';
+  render();
+
+  const result = await buildItinerary(App.form, vehicle, App.settings);
+  if (result.error){ App.itinerary = null; App.tripError = result.error; App.screen = 'results'; render(); return; }
+
+  App.vehicle = vehicle;
+  App.itinerary = result.itinerary;
+  App.tripError = null;
+  saveLastTrip({ from:App.form.fromLoc, to:App.form.toLoc, vehicleLabel:`${vehicle.brand} ${vehicle.model}`, itinerary: App.itinerary });
+  App.screen = 'results';
+  render();
+  window.scrollTo(0,0);
+}
+
+/* ---------- SETTINGS ---------- */
+function renderSettings(){
+  const s = App.settings;
+  root.innerHTML = `
+    <h1 class="home-title">Settings</h1>
+    <div class="home-sub">These assumptions apply to every trip you plan here.</div>
+    <div class="card">
+      <div class="settings-field">
+        <label>Public fast-charge rate ($/kWh)</label>
+        <input type="number" step="0.01" id="s_publicDcRate" value="${s.publicDcRate}">
+      </div>
+      <div class="settings-field">
+        <label>Overnight / home charge rate ($/kWh)</label>
+        <input type="number" step="0.01" id="s_overnightRate" value="${s.overnightRate}">
+      </div>
+      <div class="settings-field">
+        <label>Fast-charge top-up target (%)</label>
+        <input type="number" id="s_chargeCeiling" value="${s.chargeCeiling}">
+        <div class="hint">Charging slows down a lot above this — most people stop topping up here.</div>
+      </div>
+      <div class="settings-field">
+        <label>Max comfortable driving per day (km)</label>
+        <input type="number" id="s_maxDailyKm" value="${s.maxDailyKm}">
+      </div>
+      <div class="settings-field">
+        <label>How cautious — minimum battery buffer (%)</label>
+        <input type="number" id="s_safetyBuffer" value="${s.safetyBuffer}">
+      </div>
+      <div class="settings-field">
+        <label>Petrol price ($/L) — for comparison</label>
+        <input type="number" step="0.01" id="s_petrolPrice" value="${s.petrolPrice}">
+      </div>
+      <div class="settings-field">
+        <label>Average petrol economy (L/100km) — for comparison</label>
+        <input type="number" step="0.1" id="s_petrolEconomy" value="${s.petrolEconomy}">
+      </div>
+      <button class="btn btn-primary" id="saveSettingsBtn">Save settings</button>
+      <button class="restart" id="resetSettingsBtn">Reset to defaults</button>
+    </div>
+    <div class="footnote">This is a standalone app, separate from the main EV Hub, so it keeps its own settings here rather than sharing account-wide preferences. There's no licensing or account system — it's a personal offline tool, not a service with tiers.</div>
+    <button class="restart" id="backBtn">Back</button>
+  `;
+  document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
+    App.settings = {
+      publicDcRate: parseFloat(document.getElementById('s_publicDcRate').value)||SETTINGS_DEFAULTS.publicDcRate,
+      overnightRate: parseFloat(document.getElementById('s_overnightRate').value)||SETTINGS_DEFAULTS.overnightRate,
+      chargeCeiling: parseInt(document.getElementById('s_chargeCeiling').value)||SETTINGS_DEFAULTS.chargeCeiling,
+      maxDailyKm: parseInt(document.getElementById('s_maxDailyKm').value)||SETTINGS_DEFAULTS.maxDailyKm,
+      safetyBuffer: parseInt(document.getElementById('s_safetyBuffer').value)||SETTINGS_DEFAULTS.safetyBuffer,
+      petrolPrice: parseFloat(document.getElementById('s_petrolPrice').value)||SETTINGS_DEFAULTS.petrolPrice,
+      petrolEconomy: parseFloat(document.getElementById('s_petrolEconomy').value)||SETTINGS_DEFAULTS.petrolEconomy,
+    };
+    saveSettings(App.settings);
+    if (App.itinerary && App.vehicle) recompute(App.itinerary, App.vehicle, App.settings, App.form.startSoC, App.form.startDate);
+    App.screen = App.prevScreen;
+    render();
+  });
+  document.getElementById('resetSettingsBtn').addEventListener('click', ()=>{
+    App.settings = Object.assign({}, SETTINGS_DEFAULTS);
+    saveSettings(App.settings);
+    renderSettings();
+  });
+  document.getElementById('backBtn').addEventListener('click', ()=>{ App.screen = App.prevScreen; render(); });
+}
+
+/* ---------- RESULTS / EDITABLE ITINERARY ---------- */
+function doRecompute(){ recompute(App.itinerary, App.vehicle, App.settings, App.form.startSoC, App.form.startDate); }
+
+function verifiedStatusHTML(sum){
+  if (!sum.autoStopCount) return '';
+  if (sum.verifiedCount === sum.autoStopCount){
+    return '<div class="footnote" style="text-align:left;margin-bottom:18px;">✅ All ' + sum.autoStopCount + ' automatic stops were confirmed against real chargers.</div>';
+  }
+  return '<div class="footnote" style="text-align:left;margin-bottom:18px;">⚠️ Only ' + sum.verifiedCount + ' of ' + sum.autoStopCount + ' automatic stops were confirmed against real chargers — the rest are unverified placeholders. If this device can\'t reach external sites, try opening this file from a real web address (e.g. hosted on GitHub Pages) instead of double-clicking it from disk.</div>';
+}
+
+function summarize(){
+  const legs = App.itinerary.filter(l=>l.kind!=='stay');
+  const totalDistance = legs.reduce((s,l)=> s + (l.kind==='sidetrip' ? 0 : l.distanceKm), 0);
+  const chargeStops = App.itinerary.filter(l=>l.kind==='charge');
+  const overnightStops = App.itinerary.filter(l=>l.kind==='overnight' || l.kind==='stay');
+  const totalCost = App.itinerary.reduce((s,l)=> s + (l.cost||0), 0);
+  const totalChargeMins = chargeStops.reduce((s,l)=> s + (l.timeMins||0), 0);
+  const totalDays = App.itinerary.length ? App.itinerary[App.itinerary.length-1].day : 1;
+  const petrolCost = (totalDistance/100) * App.settings.petrolEconomy * App.settings.petrolPrice;
+  const autoStops = App.itinerary.filter(l=> (l.kind==='charge'||l.kind==='overnight') && l.chargerMeta !== undefined);
+  const verifiedCount = autoStops.filter(l=>l.chargerMeta.isLive).length;
+  return { totalDistance, chargeStopCount: chargeStops.length, overnightStopCount: overnightStops.length, totalCost, totalChargeMins, totalDays, petrolCost,
+    verifiedCount, autoStopCount: autoStops.length };
+}
+
+function chargerBadge(l){
+  if (l.kind!=='charge' && l.kind!=='overnight') return '';
+  if (l.chargerMeta === undefined) return ''; // manually inserted stop — user chose this one, no lookup needed
+  const meta = l.chargerMeta;
+  if (meta && meta.isLive){
+    const power = meta.powerKw ? `${meta.powerKw}kW ` : '';
+    const bays = meta.bays ? `${meta.bays} bay${meta.bays>1?'s':''}` : null;
+    const cost = meta.usageCost ? meta.usageCost : null;
+    const extras = [bays, cost].filter(Boolean).join(' · ');
+    return `<span class="live-badge live">📡 Real charger: ${meta.operator}</span>
+      <div class="q-help" style="margin:4px 0 0;">${power}${meta.connectionType || ''}${extras ? ' · '+extras : ''} — from OpenChargeMap${meta.lastUpdated ? ', last updated '+new Date(meta.lastUpdated).toLocaleDateString('en-AU') : ''}</div>`;
+  }
+  return `<span class="live-badge estimated">⚠️ Unverified</span><div class="q-help" style="margin:4px 0 0;">No real public charger was confirmed within 120km — this is a placeholder position, not a real place to charge. Search for a real charger below, or check availability before relying on this stop.</div>`;
+}
+
+function legNote(l){
+  if (l.kind==='charge') return `${chargerBadge(l)}<div class="leg-charge-note">⚡ Charge here ~${l.timeMins} min (${l.energyAdded.toFixed(0)} kWh, ~${money(l.cost)}) up to <input type="number" class="small-number target-soc" data-id="${l.id}" value="${l.targetSoC}">%</div>`;
+  if (l.kind==='overnight') return `
+    ${chargerBadge(l)}
+    <div class="toggle-row" style="margin:6px 0;">
+      <span class="toggle-label">Charger at accommodation</span>
+      <label class="switch"><input type="checkbox" class="accom-toggle" data-id="${l.id}" ${l.chargerAtAccommodation!==false?'checked':''}><span class="slider"></span></label>
+    </div>
+    ${l.chargerAtAccommodation!==false ? `<div class="leg-overnight-note">🌙 Charges overnight to <input type="number" class="small-number target-soc" data-id="${l.id}" value="${l.targetSoC||100}">% (~${money(l.cost)})</div>` : `<div class="leg-overnight-note">🌙 No charger here — battery stays at ${l.arrivalSoC}% overnight</div>`}`;
+  if (l.kind==='sidetrip') return `<div class="leg-charge-note">↪️ ${l.note||'Side trip'} — ${l.distanceKm}km round trip</div>`;
+  if (l.kind==='stay') return `
+    <div class="toggle-row" style="margin:6px 0;">
+      <span class="toggle-label">Charger at accommodation</span>
+      <label class="switch"><input type="checkbox" class="accom-toggle" data-id="${l.id}" ${l.chargerAtAccommodation!==false?'checked':''}><span class="slider"></span></label>
+    </div>
+    ${l.chargerAtAccommodation!==false ? `<div class="leg-overnight-note">Charges to ${l.targetSoC||100}% during your stay (~${money(l.cost)})</div>` : `<div class="leg-overnight-note">No charger — leaves at ${l.arrivalSoC}%</div>`}`;
+  if (l.kind==='waypoint') return `<div class="leg-charge-note">📍 Stop here — no charging planned unless you add one below.</div>`;
+  return `<div class="leg-charge-note">🏁 Arrive</div>`;
+}
+
+function addStopFormHTML(leg){
+  return `
+    <div class="inline-form" data-after="${leg.id}">
+      <div class="q-title" style="font-size:14px;">Add a stop</div>
+      <label>Type</label>
+      <select id="newStopKind">
+        <option value="charge">Charging top-up</option>
+        <option value="overnight">Overnight stay</option>
+        <option value="sidetrip">Side trip (out and back)</option>
+      </select>
+
+      <div id="chargerSearchBlock">
+        <label>Find a real charger (optional)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="chargerSearchTown" list="locList" placeholder="Search near a town" value="${leg.to && leg.to.name ? leg.to.name : ''}" style="flex:1;">
+          <button id="chargerSearchBtn" style="flex-shrink:0;background:var(--gum);color:#fff;border:none;border-radius:8px;padding:0 14px;font-size:13px;cursor:pointer;">🔍</button>
+        </div>
+        <div id="chargerSearchResults"></div>
+      </div>
+
+      <div id="stopDistLabel">
+        <label>How far into this leg (km)?</label>
+        <input type="number" id="newStopDist" value="50">
+      </div>
+      <div id="stopSocRow">
+        <label>Charge up to (%)</label>
+        <input type="number" id="newStopSoc" value="${App.settings.chargeCeiling}">
+      </div>
+      <label>Note (optional — place name, reason)</label>
+      <input type="text" id="newStopNote" placeholder="e.g. Friend's place, coffee stop">
+      <div class="form-actions">
+        <button class="cancel-btn" id="cancelStopBtn">Cancel</button>
+        <button class="save-btn" id="saveStopBtn">Add stop</button>
+      </div>
+    </div>
+  `;
+}
+
+function legCardHTML(l){
+  const routeLabel = l.kind==='stay' ? `Staying in ${l.from.name} — ${l.nights} night${l.nights>1?'s':''}`
+    : l.kind==='sidetrip' ? `Side trip from ${l.from.name}`
+    : `${l.from.name} → ${l.to.name}`;
+  const warning = l.warning ? `<div class="warning-banner">⚠️ You may not make it to the next stop on this charge — consider adding a top-up before this leg.</div>` : '';
+  const removable = l.kind!=='destination';
+  return `
+    <div class="leg-card">
+      <div class="leg-route">${routeLabel}</div>
+      ${l.kind!=='stay' ? `<div class="leg-dist">${l.distanceKm} km</div>` : ''}
+      ${warning}
+      <div class="leg-soc">
+        <div>Depart<b>${l.departSoC}%</b></div>
+        <div>Arrive<b>${l.arrivalSoC}%</b></div>
+      </div>
+      ${legNote(l)}
+      ${(l.kind!=='stay' && l.kind!=='sidetrip') ? `<a class="gmaps-link" href="${gmapsLegUrl(l.from,l.to)}" target="_blank" rel="noopener">Open this leg in Google Maps</a><br>` : ''}
+      ${removable ? `<button class="remove-link" data-remove="${l.id}">Remove this stop</button>` : ''}
+    </div>
+    ${l.kind!=='destination' && l.kind!=='stay' ? `
+      <div class="add-stop-row">
+        <button data-addafter="${l.id}">+ Add a stop after this</button>
+      </div>
+      <div id="formSlot-${l.id}"></div>
+    ` : ''}
+  `;
+}
+
+function dayGroups(){
+  const groups = {};
+  App.itinerary.forEach(l=>{ (groups[l.day] = groups[l.day]||[]).push(l); });
+  return groups;
+}
+
+function saveTripFormHTML(){
+  return `
+    <div class="inline-form">
+      <label>Name this trip so you can find it again later</label>
+      <input type="text" id="tripNameInput" value="${App.form.fromLoc} to ${App.form.toLoc}">
+      <div id="saveTripMsg"></div>
+      <div class="form-actions">
+        <button class="cancel-btn" id="saveTripCancelBtn">Cancel</button>
+        <button class="save-btn" id="saveTripConfirmBtn">Save</button>
+      </div>
+    </div>
+  `;
+}
+function wireSaveTripForm(){
+  document.getElementById('saveTripCancelBtn').addEventListener('click', ()=>{ App.showSaveForm=false; renderResults(); });
+  document.getElementById('saveTripConfirmBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('tripNameInput').value.trim();
+    const msg = document.getElementById('saveTripMsg');
+    if (!name){ msg.innerHTML = `<div class="warning-banner">Please enter a name.</div>`; return; }
+    const ok = saveTripAs(name, App.form);
+    if (ok){
+      msg.innerHTML = `<div class="leg-charge-note">✅ Saved as "${name}". Find it later under 📂 Saved Trips.</div>`;
+      setTimeout(()=>{ App.showSaveForm=false; renderResults(); }, 1200);
+    } else {
+      msg.innerHTML = `<div class="warning-banner">Couldn't save — your browser's storage may be full, disabled, or blocked (this can happen in private/incognito mode). Try a different browser or normal browsing mode.</div>`;
+    }
+  });
+}
+
+function renderResults(){
+  if (App.tripError){
+    root.innerHTML = `
+      <h2 style="font-size:20px;margin-bottom:14px;">Couldn't plan that trip</h2>
+      <div class="warning-banner">${App.tripError}</div>
+      <button class="restart" id="backBtn">Try again</button>
+    `;
+    document.getElementById('backBtn').addEventListener('click', ()=>{ App.screen='form'; render(); });
+    return;
+  }
+
+  const sum = summarize();
+  const groups = dayGroups();
+
+  const dayCardsHTML = Object.keys(groups).map(dayNum=>{
+    const legs = groups[dayNum];
+    const first = legs[0];
+    const stopNames = legs.filter(l=>l.kind!=='sidetrip').map(l=>l.to.name);
+    const routeSummary = [first.from.name, ...stopNames].filter((n,i,arr)=>n!==arr[i-1]).join(' → ');
+    const dayDist = legs.reduce((s,l)=> s + (l.kind==='sidetrip'||l.kind==='stay' ? 0 : l.distanceKm), 0);
+    const chargeCount = legs.filter(l=>l.kind==='charge').length;
+    const hasWarning = legs.some(l=>l.warning);
+    return `
+      <button class="menu-card" data-day="${dayNum}" style="width:100%;">
+        <div class="mc-icon">📅</div>
+        <div class="mc-body">
+          <div class="mc-title">Day ${dayNum} <span class="date-badge">${formatDate(first.date)}</span>${hasWarning?' <span class="live-badge estimated" style="background:#FBEAEA;color:#7A2E2E;">⚠️ check this day</span>':''}</div>
+          <div class="mc-desc">${routeSummary} · ${dayDist}km${chargeCount?` · ${chargeCount} charging stop${chargeCount>1?'s':''}`:''}</div>
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  root.innerHTML = `
+    <div class="summary-card">
+      <div class="summary-title">${App.form.fromLoc} ${App.form.roundTrip ? '⇄' : '→'} ${App.form.toLoc}</div>
+      <div class="summary-grid">
+        <div class="summary-stat">Distance<b>${sum.totalDistance} km</b></div>
+        <div class="summary-stat">Days<b>${sum.totalDays}</b></div>
+        <div class="summary-stat">Charging stops<b>${sum.chargeStopCount}</b></div>
+        <div class="summary-stat">Overnights<b>${sum.overnightStopCount}</b></div>
+        <div class="summary-stat">Charging cost<b>${money(sum.totalCost)}</b></div>
+        <div class="summary-stat">Time charging<b>${sum.totalChargeMins} min</b></div>
+      </div>
+    </div>
+    <div id="tripMap"></div>
+    <a class="gmaps-link" href="${gmapsFullTripUrl(App.itinerary)}" target="_blank" rel="noopener">🧭 Open the whole trip in Google Maps</a>
+    <div class="footnote" style="text-align:left;margin-top:14px;margin-bottom:6px;">Driving <b>${App.vehicle.brand} ${App.vehicle.model} ${App.vehicle.trim}</b>. The same trip in an average petrol car would burn roughly ${money(sum.petrolCost)} in fuel.</div>
+    ${verifiedStatusHTML(sum)}
+    <div class="section-label">Tap a day to see and edit its stops</div>
+    ${dayCardsHTML}
+    <div id="saveTripSlot">
+      ${App.showSaveForm ? saveTripFormHTML() : `<button class="restart" id="saveTripBtn">💾 Save this trip</button>`}
+    </div>
+    <button class="restart" id="againBtn">Plan another trip</button>
+    <div class="footnote">Road distances are approximated from a 484-town gazetteer, not live traffic or routing data. Charging stops marked "Live" come from OpenChargeMap; "Estimated" stops are the best-positioned town when no real charger was found nearby.</div>
+  `;
+
+  document.getElementById('againBtn').addEventListener('click', ()=>{ App.screen='form'; render(); });
+  const saveTripBtn = document.getElementById('saveTripBtn');
+  if (saveTripBtn) saveTripBtn.addEventListener('click', ()=>{ App.showSaveForm = true; renderResults(); });
+  if (App.showSaveForm) wireSaveTripForm();
+  root.querySelectorAll('[data-day]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ App.viewingDay = parseInt(btn.dataset.day); render(); window.scrollTo(0,0); });
+  });
+  drawTripMap(App.itinerary);
+}
+
+function renderDayDetail(){
+  const groups = dayGroups();
+  const legs = groups[App.viewingDay] || [];
+  root.innerHTML = `
+    <button class="restart" id="backToOverview" style="margin-bottom:14px;">← Back to trip overview</button>
+    <div class="day-label">Day ${App.viewingDay} <span class="date-badge">${legs[0] ? formatDate(legs[0].date) : ''}</span></div>
+    ${legs.map(legCardHTML).join('')}
+    <button class="restart" id="backToOverview2" style="margin-top:10px;">← Back to trip overview</button>
+  `;
+  document.getElementById('backToOverview').addEventListener('click', ()=>{ App.viewingDay = null; render(); window.scrollTo(0,0); });
+  document.getElementById('backToOverview2').addEventListener('click', ()=>{ App.viewingDay = null; render(); window.scrollTo(0,0); });
+
+  root.querySelectorAll('.target-soc').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const leg = App.itinerary.find(l=>l.id===e.target.dataset.id);
+      leg.targetSoC = parseInt(e.target.value)||leg.targetSoC;
+      doRecompute(); renderDayDetail();
+    });
+  });
+  root.querySelectorAll('.accom-toggle').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const leg = App.itinerary.find(l=>l.id===e.target.dataset.id);
+      leg.chargerAtAccommodation = e.target.checked;
+      doRecompute(); renderDayDetail();
+    });
+  });
+  root.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      removeStop(App.itinerary, btn.dataset.remove);
+      doRecompute();
+      // the day this stop belonged to may have shifted or merged — return to overview to avoid confusion
+      App.viewingDay = null;
+      render();
+    });
+  });
+  root.querySelectorAll('[data-addafter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      App.addStopOpenFor = (App.addStopOpenFor === btn.dataset.addafter) ? null : btn.dataset.addafter;
+      renderDayDetail();
+      if (App.addStopOpenFor){
+        const slot = document.getElementById('formSlot-'+App.addStopOpenFor);
+        if (slot){
+          const legObj = App.itinerary.find(l=>l.id===App.addStopOpenFor);
+          slot.innerHTML = addStopFormHTML(legObj);
+          wireAddStopForm(App.addStopOpenFor, renderDayDetail);
+        }
+      }
+    });
+  });
+}
+
+function wireAddStopForm(legId, rerender){
+  rerender = rerender || renderResults;
+  const leg = App.itinerary.find(l=>l.id===legId);
+  let selectedCharger = null;
+
+  const kindSelect = document.getElementById('newStopKind');
+  const distLabel = document.getElementById('stopDistLabel');
+  const socRow = document.getElementById('stopSocRow');
+  const chargerBlock = document.getElementById('chargerSearchBlock');
+  function syncFields(){
+    const kind = kindSelect.value;
+    distLabel.querySelector('label').textContent = kind==='sidetrip' ? 'How far away, one-way (km)?' : 'How far into this leg (km)?';
+    socRow.style.display = kind==='sidetrip' ? 'none' : 'block';
+    chargerBlock.style.display = kind==='sidetrip' ? 'none' : 'block';
+  }
+  kindSelect.addEventListener('change', syncFields);
+  syncFields();
+
+  document.getElementById('chargerSearchBtn').addEventListener('click', async ()=>{
+    const town = document.getElementById('chargerSearchTown').value.trim();
+    const resultsEl = document.getElementById('chargerSearchResults');
+    if (!town){ resultsEl.innerHTML = `<div class="q-help">Enter a town to search near.</div>`; return; }
+    resultsEl.innerHTML = `<div class="q-help">Searching OpenChargeMap…</div>`;
+    const outcome = await searchChargersNear(town, 30);
+    if (outcome.error){ resultsEl.innerHTML = `<div class="warning-banner">${outcome.error}</div>`; return; }
+    if (!outcome.results.length){ resultsEl.innerHTML = `<div class="q-help">No chargers found within 30km of ${town}. You can still add an estimated stop below.</div>`; return; }
+    resultsEl.innerHTML = outcome.results.map((c,i)=>`
+      <button type="button" class="opt" data-cidx="${i}" style="text-align:left;width:100%;margin-bottom:6px;">
+        <b>${c.name}</b><span class="opt-sub">${c.operator} · ${c.powerKw?c.powerKw+'kW ':''}${c.connectionType}${c.bays?' · '+c.bays+' bay'+(c.bays>1?'s':''):''}${c.usageCost?' · '+c.usageCost:''} · ${c.distanceFromAnchor}km from ${town}</span>
+      </button>
+    `).join('');
+    resultsEl.querySelectorAll('[data-cidx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        selectedCharger = outcome.results[parseInt(btn.dataset.cidx)];
+        resultsEl.querySelectorAll('[data-cidx]').forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
+        // If we know the leg's starting point, work out the real distance for them.
+        if (leg && leg.from && leg.from.lat && leg.from.lng){
+          const d = calculateDrivingDistance(leg.from, selectedCharger);
+          document.getElementById('newStopDist').value = d;
+        }
+      });
+    });
+  });
+
+  document.getElementById('cancelStopBtn').addEventListener('click', ()=>{ App.addStopOpenFor=null; rerender(); });
+  document.getElementById('saveStopBtn').addEventListener('click', ()=>{
+    const kind = kindSelect.value;
+    const dist = parseFloat(document.getElementById('newStopDist').value) || 20;
+    const soc = parseInt(document.getElementById('newStopSoc').value) || App.settings.chargeCeiling;
+    const note = document.getElementById('newStopNote').value;
+    insertStop(App.itinerary, legId, kind, dist, soc, note, kind!=='sidetrip' ? selectedCharger : null);
+    doRecompute();
+    App.addStopOpenFor = null;
+    rerender();
+  });
+}
+
+document.getElementById('buildTagBar').textContent = BUILD_TAG;
+render();
+</script>
+</body>
+</html>
